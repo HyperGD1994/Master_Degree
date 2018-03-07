@@ -51,7 +51,6 @@ class DynamicModel:
         self.inertia = inertia
 
         self.mass = np.array([100, 10, 10, 10, 10, 10, 10])
-
         Qi = np.zeros((6, 3))
         pi = math.pi
         Qi[0] = np.array([-pi / 2, 0, 0])
@@ -101,6 +100,7 @@ class DynamicModel:
         self.e_z = np.array([[0, 0, 1]]).T
 
         self.gravity = 0
+        self.d_time = 0.01
 
     def foward_dynamics(self, R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau):
         """
@@ -167,7 +167,7 @@ class DynamicModel:
 
                 num_e += 1
                 A_I_i = AA[i+1]
-                Re0i = RR[i+1] -RR[0] + np.dot(A_I_i, self.link_vector[i+1, 7])
+                Re0i = RR[i+1] - RR[0] + np.dot(A_I_i, self.link_vector[i+1, 7])
 
                 Me_i_1 = np.hstack((np.eye(3), np.zeros((3,3))))
                 Me_i_2 = np.hstack((self.tilde(Re0i), np.eye(3)))
@@ -185,7 +185,7 @@ class DynamicModel:
         Force_ex[6:6+n] = taux
 
         # calculation of the acceleration
-        a_Force = Force - Force0 +Force_ex
+        a_Force = Force - Force0 + Force_ex
         Acc = np.dot(np.linalg.inv(HH), a_Force)
 
         vd0 = Acc[0:3]
@@ -194,15 +194,11 @@ class DynamicModel:
 
         return vd0, wd0, qdd
 
-
-
-
-
     def calc_coordinate_transform(self, A0, q):
         """
         计算坐标转换矩阵
-        :param A0: 基座姿态
-        :param q: 关节角
+        :param A0: 基座姿态 3x3
+        :param q: 关节角 nx1
         :return: link_num 个旋转矩阵，分别代表各关节的坐标转换，第0个为基座
         """
 
@@ -221,14 +217,14 @@ class DynamicModel:
     def calc_position(self, R0, AA, q):
         """
         计算各连杆位置
-        :param R0: 基座初始位置
+        :param R0: 基座初始位置 3x1
         :param AA: 旋转矩阵，由calc_coordinate_transform函数计算
-        :param q: 关节角，此处仅用来得到连杆数量
+        :param q: 关节角，此处仅用来得到连杆数量 nx1
         :return: nx3矩阵，为每个连杆中心位置坐标（基准系下）
         """
         link_num = q.shape[0]
         RR = np.zeros((link_num+1, 3))
-        RR[0] = R0
+        RR[0] = R0.reshape(3)
 
         for i in range(link_num):
             RR[i+1] = RR[self.connect_lower[i]] + \
@@ -241,10 +237,10 @@ class DynamicModel:
         """
         计算各连杆速度
         :param AA: 旋转矩阵
-        :param v0: 基座速度
-        :param w0: 基座角速度
-        :param q: 关节角
-        :param qd: 关节角速度
+        :param v0: 基座速度 3x1
+        :param w0: 基座角速度 3x1
+        :param q: 关节角 nx1
+        :param qd: 关节角速度 nx1
         :return: 输出各连杆速度、角速度，均为 n+1x3x1矩阵， 输出均在惯性系下
         """
         n = self.link_num
@@ -419,12 +415,12 @@ class DynamicModel:
             for j in range(i+1, n+1):
                 A_I_i = AA[i]
                 T += self.connect_upper[i-1, j-1] * (np.cross(np.dot(A_I_i, (self.link_vector[i, j]-self.link_vector[i, i])).T, Fj[j-1].T).T + Tj[j-1])
-            Tj[i-1] = TT[i] + T - np.cross(np.dot(AA[i], self.link_vector[i,i]).T, FF[i].T).T
+            Tj[i-1] = TT[i] + T - np.cross(np.dot(AA[i], self.link_vector[i, i]).T, FF[i].T).T
             Tj[i-1] -= self.connect_end[i-1] * (np.cross(np.dot(AA[i], (self.link_vector[i, n+1] - self.link_vector[i, i])).T, Fe[:, i-1].reshape(1, 3)).T + Te[:, i-1].reshape(3, 1))
 
         # equilibrium on link 0
-        F = np.zeros((3,1))
-        T = np.zeros((3,1))
+        F = np.zeros((3, 1))
+        T = np.zeros((3, 1))
 
         for i in range(n):
             if self.connect_base[i]:
@@ -433,7 +429,7 @@ class DynamicModel:
 
         for i in range(n):
             if self.connect_base[i]:
-                T += self.connect_base[i] * (np.cross(np.dot(AA[0], self.link_vector[0,i+1]).T, Fj[i].T).T +Tj[i])
+                T += self.connect_base[i] * (np.cross(np.dot(AA[0], self.link_vector[0,i+1]).T, Fj[i].T).T + Tj[i])
         TT0 += T
 
         # calculation of torques of each joint
@@ -513,27 +509,6 @@ class DynamicModel:
             JJ_re[i] = np.dot(A_I_i, self.e_z).reshape(3)
         return JJ_re.T
 
-    # def forward_kinematics_effector(self, RR, AA, joints):
-    #     """
-    #     计算由 joints 给出的特定末端的位置、姿态
-    #     :param RR:
-    #     :param AA:
-    #     :param joints: 基座-末端 列表
-    #     :return: 位置1x3， 姿态3x3
-    #     """
-    #     n = len(joints)
-    #     k = joints[-1]
-    #
-    #     A_I_i = AA[k]
-    #     roll = self.orientation_of_endpoint[k, 0]
-    #     pitch = self.orientation_of_endpoint[k, 1]
-    #     yaw = self.orientation_of_endpoint[k, 2]
-    #     A_i_EE = self.rpy_to_direction_cosine(roll, pitch, yaw).T
-    #
-    #     ORI_e = np.dot(A_I_i, A_i_EE)
-    #     POS_e = RR[k] + np.dot(A_I_i, self.link_vector[k, 7])
-    #     return POS_e, ORI_e
-
     def forward_kinematics_joints(self, RR, AA, joints):
         """
         计算由 joints 给出的各关节 前向运动学
@@ -576,7 +551,7 @@ class DynamicModel:
         :return: 列表
         """
         n = self.link_num
-        ie = np.zeros(self.connect_end.sum(),dtype=int)
+        ie = np.zeros(self.connect_end.sum(), dtype=int)
 
         j = 0
         for i in range(n):
@@ -622,3 +597,119 @@ class DynamicModel:
                       [A[2], 0, -A[0]],
                       [-A[1], A[0], 0]])
         return B
+
+    def aw_vector_rotation(self, w0):
+        dt = self.d_time
+        w0 = w0.reshape(3)
+        if np.linalg.norm(w0, 2)==0:
+            E0 = np.eye(3)
+        else:
+            th = np.linalg.norm(w0, 2) * dt
+            w = w0 / np.linalg.norm(w0, 2)
+
+            E0 = np.array([[np.cos(th) + pow(w[0], 2) * (1 - np.cos(th)),
+                            w[0] * w[1] * (1 - np.cos(th)) - w[2] * np.sin(th),
+                            w[2] * w[0] * (1 - np.cos(th)) + w[1] * np.sin(th)],
+                           [w[0] * w[1] * (1 - np.cos(th)) + w[2] * np.sin(th),
+                            np.cos(th) + pow(w[1], 2) * (1 - np.cos(th)),
+                            w[2] * w[1] * (1 - np.cos(th)) - w[0] * np.sin(th)],
+                           [w[2] * w[0] * (1 - np.cos(th)) - w[1] * np.sin(th),
+                            w[2] * w[1] * (1 - np.cos(th)) + w[0] * np.sin(th),
+                            np.cos(th) + pow(w[2], 2) * (1 - np.cos(th))]])
+        return E0
+
+
+    def forward_dynamics_RungeKutta(self, R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau):
+        """
+        :param R0:
+        :param A0:
+        :param v0:
+        :param w0:
+        :param q:
+        :param qd:
+        :param F0:
+        :param T0:
+        :param Fe:
+        :param Te:
+        :param tau:
+        :return:
+        """
+        dt = self.d_time
+
+        tmp_vd0, tmp_wd0, tmp_qdd = self.foward_dynamics(R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
+        K1_R0 = dt * v0
+        K1_A0 = np.dot(self.aw_vector_rotation(w0), A0) - A0
+        K1_q = dt * qd
+        K1_v0 = dt * tmp_vd0
+        K1_w0 = dt * tmp_wd0
+        K1_qd = dt * tmp_qdd
+
+        tmp_vd0, tmp_wd0, tmp_qdd = self.foward_dynamics(R0 + K1_R0 / 2, A0 + K1_A0 / 2, v0 + K1_v0 / 2, w0 + K1_w0 / 2,
+                                                         q + K1_q / 2, qd + K1_qd / 2, F0, T0, Fe, Te, tau)
+        K2_R0 = dt * (v0+K1_v0/2)
+        K2_A0 = np.dot(self.aw_vector_rotation((w0+K1_w0/2)), A0) - A0
+        K2_q = dt * (qd+K1_qd/2)
+        K2_v0 = dt * tmp_vd0
+        K2_w0 = dt * tmp_wd0
+        K2_qd = dt * tmp_qdd
+
+        tmp_vd0, tmp_wd0, tmp_qdd = self.foward_dynamics(R0 + K2_R0 / 2, A0 + K2_A0 / 2, v0 + K2_v0 / 2, w0 + K2_w0 / 2,
+                                                         q + K2_q / 2, qd + K2_qd / 2, F0, T0, Fe, Te, tau)
+        K3_R0 = dt * (v0 + K2_v0 / 2)
+        K3_A0 = np.dot(self.aw_vector_rotation((w0 + K2_w0 / 2)), A0) - A0
+        K3_q = dt * (qd + K2_qd / 2)
+        K3_v0 = dt * tmp_vd0
+        K3_w0 = dt * tmp_wd0
+        K3_qd = dt * tmp_qdd
+
+        tmp_vd0, tmp_wd0, tmp_qdd = self.foward_dynamics(R0 + K3_R0 / 2, A0 + K3_A0 / 2, v0 + K3_v0 / 2, w0 + K3_w0 / 2,
+                                                         q + K3_q / 2, qd + K3_qd / 2, F0, T0, Fe, Te, tau)
+        K4_R0 = dt * (v0 + K3_v0 )
+        K4_A0 = np.dot(self.aw_vector_rotation((w0 + K3_w0 )), A0) - A0
+        K4_q = dt * (qd + K3_qd )
+        K4_v0 = dt * tmp_vd0
+        K4_w0 = dt * tmp_wd0
+        K4_qd = dt * tmp_qdd
+
+        R0_next = R0 + (K1_R0 + 2 * K2_R0 + 2 * K3_R0 + K4_R0) / 6
+        A0_next = A0 + (K1_A0 + 2 * K2_A0 + 2 * K3_A0 + K4_A0) / 6
+        q_next = q + (K1_q + 2 * K2_q + 2 * K3_q + K4_q) / 6
+        v0_next = v0 + (K1_v0 + 2 * K2_v0 + 2 * K3_v0 + K4_v0) / 6
+        w0_next = w0 + (K1_w0 + 2 * K2_w0 + 2 * K3_w0 + K4_w0) / 6
+        qd_next = qd + (K1_qd + 2 * K2_qd + 2 * K3_qd + K4_qd) / 6
+
+        R0 = R0_next
+        A0 = A0_next
+        q = q_next
+        v0 = v0_next
+        w0 = w0_next
+        qd = qd_next
+
+        return R0, A0, v0, w0, q, qd
+
+
+if __name__ == '__main__':
+    pi = math.pi
+
+    q = np.zeros((6,1))
+    qd = np.zeros((6,1))
+    qdd = np.zeros((6,1))
+
+    v0 = np.array([[3, 2, 1]]).T
+    w0 = np.array([[1, 2, 3]]).T
+    vd0 = np.array([[0, 0, 0]]).T
+    wd0 = np.array([[0, 0, 0]]).T
+
+    R0 = np.array([[0, 0, 0]]).T
+    Q0 = np.array([[0, 0, 0]]).T
+    A0 = np.eye(3)
+
+    Fe = np.zeros((3,6))
+    Te = np.zeros((3,6))
+    F0 = np.array([[0, 0, 0]]).T
+    T0 = np.array([[0, 0, 0]]).T
+
+    tau = np.zeros(6)
+
+    model = DynamicModel()
+    model.forward_dynamics_RungeKutta(R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)

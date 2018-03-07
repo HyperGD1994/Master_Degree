@@ -1,0 +1,119 @@
+\documentclass[UTF8]{ctexart}
+%\usepackage{ctex}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{float}
+
+\usepackage[super,square]{natbib}
+\geometry{left=2cm,right=2cm,top=2.5cm,bottom=2.5cm}
+
+\CTEXsetup[name={},format={\raggedright\bfseries}]{part}
+\CTEXsetup[name={},format={\raggedright\bfseries}]{section}
+\CTEXsetup[name={},format={\raggedright}]{subsection}
+\CTEXsetup[name={},format={\raggedright}]{subsubsection}
+\CTEXsetup[name={},format={\raggedright\bfseries}]{paragraph}
+\pagestyle{plain}
+
+\usepackage{CJKulem}
+%\usepackage{enumerate}
+\usepackage{amssymb}
+
+\renewcommand{\thesection}{\number\numexpr\value{section}-1.\relax}
+\renewcommand{\thesubsection}{\number\numexpr\value{subsection}.\relax}
+
+
+\usepackage{enumitem}
+
+
+\begin{document}
+\title{《空间机器人动力学模型》说明}
+\author{弓铎}
+\maketitle
+
+\noindent 空间机械臂动力学模型，根据Matlab语言SpaceDyn编写
+\begin{itemize}
+	\item Python3.6
+	\item 只完成前向动力学
+	\item 某些变量（构型变量）的存储下标并未从零开始，待标准化
+	\item 关节类型只考虑转动关节（rotational），未处理平动关节
+	\item 使用多维数组时，多次强制进行形状转换（reshape），可能导致不易察觉的错误，待改进
+\end{itemize}
+
+\section{变量说明(self)}
+
+\begin{enumerate}[itemindent=0.3em]  
+	\item 构型相关：（connect相关变量存储下标存在问题，并未从0开始）
+	\begin{itemize}
+		\item link\_num:连杆数目n，编号从0到n-1，其中，0为基座
+		\item connect\_lower:低连接，$ 1 \times n-1$数组，connect\_lower[i]表示编号i+1连杆的低连接编号
+		\item connect\_upper:高连接，$ n-1 \times n-1 $数组
+%		\begin{equation*}
+%		connect\_upper[i,j]=\left\{\begin{aligned}
+%		-1&i=j\\
+%		1&i=conncet\_lower[j]\\
+%		0&otherwise
+%		\end{aligned}\right.
+%		\end{equation*}
+		\item connect\_end,connect\_base:是否与末端、基座相连（1是，0否）
+	
+	\end{itemize}
+	\item inertia:惯量矩阵，$ n \times 3 \times 3$数组，第一下标表示连杆编号
+	\item mass:质量，分别为连杆质量
+	\item q\_from\_Bi\_to\_i:连杆姿态，为坐标系$\sum_{Bi}$ 到坐标系 $\sum_{i}$的欧拉角变换
+	\item link\_vector:连杆矢量，$ n+1 \times n+1 \times 3$数组，意义如图
+\end{enumerate}
+
+\section{方向余弦和坐标变换}
+\begin{enumerate}[itemindent=0.3em]
+	\item 坐标系定义：原点固连在关节上，z轴为关节旋转轴（关节角q相关），其余定义可由self.q\_from\_Bi\_to\_i和self.link\_vector确定
+	\item 方向余弦，采用如下定义:
+	\begin{align*}
+		\left\{\sum\nolimits_{i}\right\}&={}^{i}\!C_{i-1}\left\{\sum\nolimits_{i-1}\right\}\\
+		&=\left[C_{3}(q_{i})C_{3}(\gamma_{i})C_{2}(\beta_{i})C_{1}(\alpha_{i})\right]^{T}\left\{\sum\nolimits_{i-1}\right\}
+	\end{align*}
+	\item 坐标变换：$ {}^{I}\!A_{i}=C_{i}^{T}$
+\end{enumerate}
+
+\section{运动学}
+\begin{enumerate}[itemindent=0.3em]
+	\item 计算坐标变换$ A = clac\_coordinate\_transform(A_{0},q) $ 
+	\begin{align*}
+	A_{i} &= A_{B_{i}}\cdot{}^{i}C_{B_{i}}^{T}\\
+	& = A_{B_{i}}\cdot (C_{z}(\gamma+q_{i})C_{y}(\beta)C_{x}(\alpha))^{T}
+	\end{align*}
+	\item 计算连杆位置$R=calc\_position(R_{0},A,q)$ 
+	\begin{align*}
+		R_{i} &= R_{B_{i}} + A_{B_{i}}\cdot l_{B_{i},i} - A_{i}\cdot l_{i,i}
+	\end{align*}
+	\item 计算连杆速度 $ v, \omega = calc\_velocity(A,v_{0},\omega_{0},q,\dot{q})$
+	\begin{align*}
+		\omega_{i} &= \omega_{B_{i}} + (A_{i}\cdot e_{z} )\dot{q}_{i}\\
+		v_{i} &= v_{B_{i}} + \omega_{B_{i}} \times (A_{B_{i}}\cdot l_{B_{i},i}) - \omega_{i}\times (A_{i}\cdot l_{i,i})
+	\end{align*}
+	\item 计算连杆加速度
+\end{enumerate} 
+
+\section{前向动力学}
+系统动力学方程写作：
+\begin{equation*}
+	\left[\begin{matrix}
+	\boldsymbol{H}_{b} && \boldsymbol{H}_{bm}\\
+	\boldsymbol{H}_{bm}^{T} && \boldsymbol{H}_{m}
+	\end{matrix}\right]\left[\begin{matrix}
+	\ddot{x}_{b}\\
+	\ddot{\boldsymbol{\Theta}}
+	\end{matrix}\right]+\left[\begin{matrix}
+	c_{b}\\
+	c_{m}
+	\end{matrix}\right]=\left[\begin{matrix}
+	\boldsymbol{F}_{b}\\
+	\boldsymbol{\tau}_{m}
+	\end{matrix}\right]
+\end{equation*}
+\begin{enumerate}[itemindent=0.3em]
+	\item 计算惯量矩阵
+\end{enumerate}
+
+\end{document}
