@@ -113,7 +113,45 @@
 	\end{matrix}\right]
 \end{equation*}
 \begin{enumerate}[itemindent=0.3em]
-	\item 计算惯量矩阵
+	\item 计算平动雅克比矩阵 $ J_t = calc\_translational\_jacobian(R,A)$ 
+	\begin{align*}
+		J_{ti} &= \left[k_1 \times(r_i-p_1),\cdots,k_i \times(r_i-p_i),0,\cdots,0\right]\in \mathbb{R}^{3\times n}\\
+		& = (A_j\cdot e_z) \times (R_i - R_j - (A_j \cdot l_{j,j}))\\
+	\end{align*}
+	(i,j详细计算见程序)
+	\item 计算转动雅克比矩阵 $ J_r = calc\_rotational\_jacobian(R,A)$ 
+	\begin{align*}
+	J_{r i} &= \left[k_1 ,\cdots,k_i ,0,\cdots,0\right]\in \mathbb{R}^{3\times n}\\
+	& = (A_j\cdot e_z) \\
+	\end{align*}
+	(i,j详细计算见程序)
+	\item 计算惯量矩阵 $ H = clalc\_inertia\_matrices(R,A)$
+	\begin{eqnarray*}
+	 J_t &= &calc\_translational\_jacobian(R,A) \\
+	 J_r &= &calc\_rotational\_jacobian(R,A)\\
+	 \omega E&=& M E_{3\times3}\\
+	 \omega r_{0g}&=& (R_g -R_0)M\\
+	 J_{tg} &=& \sum m_i J_{ti}\\
+	 H_\omega &=& \sum A_i\cdot inertia_i\cdot A_i^T+m_i\tilde{r}_{0i}^T\cdot\tilde{r}_{0i}	 \\
+	 H_{\omega q} &=& \sum (A_i\cdot inertia_i \cdot A_i^T)\cdot J_{ri} + m_i\tilde{r}_{0i}\cdot J_{ti}\\
+	 H_q &=& J_{ri}^T\cdot A_i\cdot inertia_i \cdot A_i^T\cdot J_{ri} +m_i J_{ti}^T J_{ti}
+	\end{eqnarray*}
+	
+	\begin{equation*}
+	\boldsymbol{H}=\left[\begin{matrix}
+	\omega E & \tilde{\omega r}_{0g}^T& J_{tg}\\
+	\tilde{\omega r}_{0g} & H_\omega & H_{\omega q}\\
+	J_{tg}^T &  H_{\omega q}^T& H_q
+	\end{matrix}\right]
+	\end{equation*}
 \end{enumerate}
+\begin{table}[h]
+	\centering
+	\begin{tabular}{cc}
+		a&b
+	\end{tabular}
+\end{table}
+
+
 
 \end{document}
