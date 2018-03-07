@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="29cf3f35-cdd4-47be-8f83-8edcd73565d6" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/../.gitignore" afterPath="$PROJECT_DIR$/../.gitignore" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/DynamicModel.py" afterPath="$PROJECT_DIR$/DynamicModel.py" />
-      <change beforePath="$PROJECT_DIR$/Manual/Manual_DynamicModel.pdf" afterPath="$PROJECT_DIR$/Manual/Manual_DynamicModel.pdf" />
-      <change beforePath="$PROJECT_DIR$/Manual/Manual_DynamicModel.tex" afterPath="$PROJECT_DIR$/Manual/Manual_DynamicModel.tex" />
-    </list>
+    <list default="true" id="29cf3f35-cdd4-47be-8f83-8edcd73565d6" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
