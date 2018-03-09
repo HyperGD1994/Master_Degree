@@ -175,7 +175,14 @@
 		$\tau$&：关节力矩
 	\end{tabular}
 \end{table}
-\item 递归牛顿欧拉法
+\item 递归牛顿欧拉法:对于第i个连杆的牛顿、欧拉公式为：
+
+\begin{eqnarray*}
+	\boldsymbol{F}_i &=& m_i\dot{v}_i\\
+	\boldsymbol{N}_i &=& I_i\dot{\omega}_i+\omega_i\times(I_i\omega_i)\\
+\end{eqnarray*}
+其中，是施加在连杆质心上的惯性力和力矩。对于关节与末端上的力与力矩：
+
 \end{enumerate}
 
 
