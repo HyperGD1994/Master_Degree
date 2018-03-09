@@ -5,6 +5,7 @@
 \usepackage{hyperref}
 \usepackage{geometry}
 \usepackage{float}
+\usepackage{verbatim}
 
 \usepackage[super,square]{natbib}
 \geometry{left=2cm,right=2cm,top=2.5cm,bottom=2.5cm}
@@ -97,7 +98,7 @@
 
 \section{前向动力学}
 系统动力学方程写作：
-\begin{equation*}
+\begin{equation}
 	\left[\begin{matrix}
 	\boldsymbol{H}_{b} && \boldsymbol{H}_{bm}\\
 	\boldsymbol{H}_{bm}^{T} && \boldsymbol{H}_{m}
@@ -111,7 +112,8 @@
 	\boldsymbol{F}_{b}\\
 	\boldsymbol{\tau}_{m}
 	\end{matrix}\right]
-\end{equation*}
+	\label{forward-dyn}
+\end{equation}
 \begin{enumerate}[itemindent=0.3em]
 	\item 计算平动雅克比矩阵 $ J_t = calc\_translational\_jacobian(R,A)$ 
 	\begin{align*}
@@ -126,16 +128,19 @@
 	\end{align*}
 	(i,j详细计算见程序)
 	\item 计算惯量矩阵 $ H = clalc\_inertia\_matrices(R,A)$
-	\begin{eqnarray*}
-	 J_t &= &calc\_translational\_jacobian(R,A) \\
-	 J_r &= &calc\_rotational\_jacobian(R,A)\\
-	 \omega E&=& M E_{3\times3}\\
-	 \omega r_{0g}&=& (R_g -R_0)M\\
-	 J_{tg} &=& \sum m_i J_{ti}\\
-	 H_\omega &=& \sum A_i\cdot inertia_i\cdot A_i^T+m_i\tilde{r}_{0i}^T\cdot\tilde{r}_{0i}	 \\
-	 H_{\omega q} &=& \sum (A_i\cdot inertia_i \cdot A_i^T)\cdot J_{ri} + m_i\tilde{r}_{0i}\cdot J_{ti}\\
-	 H_q &=& J_{ri}^T\cdot A_i\cdot inertia_i \cdot A_i^T\cdot J_{ri} +m_i J_{ti}^T J_{ti}
-	\end{eqnarray*}
+	\begin{comment}
+		\begin{eqnarray*}
+		J_t &= &calc\_translational\_jacobian(R,A) \\
+		J_r &= &calc\_rotational\_jacobian(R,A)\\
+		\omega E&=& M E_{3\times3}\\
+		\omega r_{0g}&=& (R_g -R_0)M\\
+		J_{tg} &=& \sum m_i J_{ti}\\
+		H_\omega &=& \sum A_i\cdot inertia_i\cdot A_i^T+m_i\tilde{r}_{0i}^T\cdot\tilde{r}_{0i}	 \\
+		H_{\omega q} &=& \sum (A_i\cdot inertia_i \cdot A_i^T)\cdot J_{ri} + m_i\tilde{r}_{0i}\cdot J_{ti}\\
+		H_q &=& J_{ri}^T\cdot A_i\cdot inertia_i \cdot A_i^T\cdot J_{ri} +m_i J_{ti}^T J_{ti}
+		\end{eqnarray*}
+	\end{comment}
+	
 	
 	\begin{equation*}
 	\boldsymbol{H}=\left[\begin{matrix}
@@ -144,13 +149,35 @@
 	J_{tg}^T &  H_{\omega q}^T& H_q
 	\end{matrix}\right]
 	\end{equation*}
-\end{enumerate}
-\begin{table}[h]
+	对于公式\ref{forward-dyn},各项计算有：
+	\begin{eqnarray*}
+		\boldsymbol{H}_b\in\mathbb{R}^{6 \times 6} &=& \left[\begin{matrix}
+			\omega E & \omega \tilde{r}_{0g}^T\\
+			\omega \tilde{r}_{0g} & \boldsymbol{H}_\omega
+		\end{matrix}\right]\\
+		\boldsymbol{H}_{bm} \in \mathbb{R}^{6 \times n} &=& \left[\begin{matrix}
+			J_{t\omega}\\
+			H_{\omega \phi}
+		\end{matrix}\right]\\
+		\boldsymbol{H}_\omega \in \mathbb{R}^{3 \times 3}&=& \sum_{i=1}^{n}(I_i+m_i\tilde{r}_{oi}^T\tilde{r}_{0i})+I_0\\
+		\boldsymbol{H}_{\omega \phi} \in \mathbb{R}^{3 \times n} &=& \sum_{i=1}^{n}(I_iJ_{Ri}+m_i\tilde{r}_{0i}J_{Ti})\\
+		J_{T\omega} \in \mathbb{R}^{3\times n}&=& \sum_{i=1}^{n}(J_{Ri}^TI_iJ_{Ri}+m_iJ_{Ti}^TJ_{Ti})\\
+	\end{eqnarray*}
+	\begin{table}[h]
 	\centering
-	\begin{tabular}{cc}
-		a&b
+	\begin{tabular}{cl}
+		$m_i$& ：连杆质量\\
+		$\omega$&：系统总质量\\
+		$r_i$&：连杆质心的位置矢量\\
+		$p_i$ &：关节的位置矢量\\
+		$r_g$&：系统质心位置矢量\\
+		$c_b,c_m$&：非线性项\\
+		$\tau$&：关节力矩
 	\end{tabular}
 \end{table}
+\item 递归牛顿欧拉法
+\end{enumerate}
+
 
 
 
