@@ -4,23 +4,27 @@ import math
 
 class DynamicModel:
     def __init__(self):
-        self.connect_lower = np.array([0, 1, 2, 0, 4, 5])  # base's lower connect is -1
+        # n is the number of link, without the base(no.0)
 
-        self.connect_upper = np.array([[-1, 1, 0, 0, 0, 0],
-                                       [0, -1, 1, 0, 0, 0],
-                                       [0, 0, -1, 0, 0, 0],
-                                       [0, 0, 0, -1, 1, 0],
-                                       [0, 0, 0, 0, -1, 1],
-                                       [0, 0, 0, 0, 0, -1]])
+        # connect_lower : 1xn
+        self.connect_lower = np.array([0, 1, 2])  # base's lower connect is -1
 
-        S0 = np.array([1, 0, 0, 1, 0, 0])
-        SE = np.array([0, 0, 1, 0, 0, 1])
+        # connect_upper : nxn
+        self.connect_upper = np.array([[-1, 1, 0],
+                                       [0, -1, 1],
+                                       [0, 0, -1]])
+
+        # connect_base : 1xn
+        # connect_end  : 1xn
+        S0 = np.array([1, 0, 0])
+        SE = np.array([0, 0, 1])
         self.connect_end = SE
         self.connect_base = S0
 
-        J_type = np.array(['R', 'R', 'P', 'R', 'R', 'R'])
+        J_type = np.array(['R', 'R', 'R'])
 
-        inertia = np.zeros((7, 3, 3))
+        # inertia : (n+1) x (3x3)
+        inertia = np.zeros((4, 3, 3))
         inertia[0] = np.array([[10, 0, 0],
                                [0, 10, 0],
                                [0, 0, 10]])
@@ -36,61 +40,40 @@ class DynamicModel:
         inertia[3] = np.array([[1, 0, 0],
                                [0, 0.1, 0],
                                [0, 0, 1]])
-
-        inertia[4] = np.array([[1, 0, 0],
-                               [0, 1, 0],
-                               [0, 0, 0.1]])
-
-        inertia[5] = np.array([[1, 0, 0],
-                               [0, 0.1, 0],
-                               [0, 0, 1]])
-
-        inertia[6] = np.array([[1, 0, 0],
-                               [0, 0.1, 0],
-                               [0, 0, 1]])
         self.inertia = inertia
 
-        self.mass = np.array([100, 10, 10, 10, 10, 10, 10])
-        Qi = np.zeros((6, 3))
+        # mass : 1x(n+1)
+        self.mass = np.array([100, 10, 10, 10])
+
+        # q_from_Bi_to_i : nx3
+        Qi = np.zeros((3, 3))
         pi = math.pi
         Qi[0] = np.array([-pi / 2, 0, 0])
         Qi[1] = np.array([pi / 2, 0, 0])
         Qi[2] = np.array([0, 0, 0])
-        Qi[3] = np.array([pi / 2, 0, 0])
-        Qi[4] = np.array([pi / 2, 0, 0])
-        Qi[5] = np.array([0, 0, 0])
 
         self.q_from_Bi_to_i = Qi
 
-        Qe = np.zeros((6+1, 3))
+        # orientation_of_endpoint : (n+1)xn
+        Qe = np.zeros((3+1, 3))
         Qe[3] = np.array([0, 0, pi / 2])
-        Qe[6] = np.array([0, 0, pi / 2])
 
         self.orientation_of_endpoint = Qe
 
-        # link vector
+        # link vector : (n+2)x(n+2)x3
         # from link i to link j
         # (from base link 0 to joint j
         # or from link i to end point)
-        cc = np.zeros((8, 8, 3))
+        cc = np.zeros((5, 5, 3))
         cc[1, 1] = np.array([0, 0, -0.5])
         cc[2, 2] = np.array([0, 0, -0.5])
         cc[3, 3] = np.array([0, 0, -0.5])
-        cc[4, 4] = np.array([0, 0, -0.5])
-        cc[5, 5] = np.array([0, 0, -0.5])
-        cc[6, 6] = np.array([0, 0, -0.5])
 
         cc[1, 2] = np.array([0, 0, 0.5])
         cc[2, 3] = np.array([0, 0, 0.5])
-        cc[3, 4] = np.array([0, 0, 0.5])
-        cc[4, 5] = np.array([0, 0, 0.5])
-        cc[5, 6] = np.array([0, 0, 0.5])
 
         cc[0, 1] = np.array([0, 1, 0])
-        cc[0, 4] = np.array([0, -1, 0])
-
-        cc[3, 7] = np.array([0, 0.5, 0])
-        cc[6, 7] = np.array([0, 0.5, 0])
+        cc[3, 4] = np.array([0, 0.5, 0])
 
         self.link_vector = cc
 
@@ -167,7 +150,7 @@ class DynamicModel:
 
                 num_e += 1
                 A_I_i = AA[i+1]
-                Re0i = RR[i+1] - RR[0] + np.dot(A_I_i, self.link_vector[i+1, 7])
+                Re0i = RR[i+1] - RR[0] + np.dot(A_I_i, self.link_vector[i+1, n+1])
 
                 Me_i_1 = np.hstack((np.eye(3), np.zeros((3, 3))))
                 Me_i_2 = np.hstack((self.tilde(Re0i), np.eye(3)))
@@ -539,7 +522,7 @@ class DynamicModel:
         A_i_EE = self.rpy_to_direction_cosine(roll, pitch, yaw).T
 
         ORI_e = np.dot(AA[k], A_i_EE)
-        POS_e = RR[k] + np.dot(AA[k], self.link_vector[k, 7])
+        POS_e = RR[k] + np.dot(AA[k], self.link_vector[k, 4])
 
         POS_j[n] = POS_e.reshape(3, 1)
         ORI_j[n] = ORI_e
