@@ -675,9 +675,9 @@ class DynamicModel:
 if __name__ == '__main__':
     pi = math.pi
 
-    q = np.zeros((6, 1))
-    qd = np.zeros((6, 1))
-    qdd = np.zeros((6, 1))
+    q = np.zeros((3, 1))
+    qd = np.zeros((3, 1))
+    qdd = np.zeros((3, 1))
 
     v0 = np.array([[3, 2, 1]]).T
     w0 = np.array([[1, 2, 3]]).T
@@ -688,12 +688,12 @@ if __name__ == '__main__':
     Q0 = np.array([[0, 0, 0]]).T
     A0 = np.eye(3)
 
-    Fe = np.zeros((3, 6))
-    Te = np.zeros((3, 6))
+    Fe = np.zeros((3, 3))
+    Te = np.zeros((3, 3))
     F0 = np.array([[0, 0, 0]]).T
     T0 = np.array([[0, 0, 0]]).T
 
-    tau = np.zeros(6)
+    tau = np.zeros(3)
 
     model = DynamicModel()
     model.forward_dynamics_RungeKutta(R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
