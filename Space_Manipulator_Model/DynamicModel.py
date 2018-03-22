@@ -4,23 +4,27 @@ import math
 
 class DynamicModel:
     def __init__(self):
-        self.connect_lower = np.array([0, 1, 2, 0, 4, 5]) # base's lower connect is -1
+        # n is the number of link, without the base(no.0)
 
-        self.connect_upper = np.array([[-1, 1, 0, 0, 0, 0],
-                                       [0, -1, 1, 0, 0, 0],
-                                       [0, 0, -1, 0, 0, 0],
-                                       [0, 0, 0, -1, 1, 0],
-                                       [0, 0, 0, 0, -1, 1],
-                                       [0, 0, 0, 0, 0, -1]])
+        # connect_lower : 1xn
+        self.connect_lower = np.array([0, 1, 2])  # base's lower connect is -1
 
-        S0 = np.array([1, 0, 0, 1, 0, 0])
-        SE = np.array([0, 0, 1, 0, 0, 1])
+        # connect_upper : nxn
+        self.connect_upper = np.array([[-1, 1, 0],
+                                       [0, -1, 1],
+                                       [0, 0, -1]])
+
+        # connect_base : 1xn
+        # connect_end  : 1xn
+        S0 = np.array([1, 0, 0])
+        SE = np.array([0, 0, 1])
         self.connect_end = SE
         self.connect_base = S0
 
-        J_type = np.array(['R', 'R', 'P', 'R', 'R', 'R'])
+        J_type = np.array(['R', 'R', 'R'])
 
-        inertia = np.zeros((7, 3, 3))
+        # inertia : (n+1) x (3x3)
+        inertia = np.zeros((4, 3, 3))
         inertia[0] = np.array([[10, 0, 0],
                                [0, 10, 0],
                                [0, 0, 10]])
@@ -36,67 +40,46 @@ class DynamicModel:
         inertia[3] = np.array([[1, 0, 0],
                                [0, 0.1, 0],
                                [0, 0, 1]])
-
-        inertia[4] = np.array([[1, 0, 0],
-                               [0, 1, 0],
-                               [0, 0, 0.1]])
-
-        inertia[5] = np.array([[1, 0, 0],
-                               [0, 0.1, 0],
-                               [0, 0, 1]])
-
-        inertia[6] = np.array([[1, 0, 0],
-                               [0, 0.1, 0],
-                               [0, 0, 1]])
         self.inertia = inertia
 
-        self.mass = np.array([100, 10, 10, 10, 10, 10, 10])
-        Qi = np.zeros((6, 3))
+        # mass : 1x(n+1)
+        self.mass = np.array([100, 10, 10, 10])
+
+        # q_from_Bi_to_i : nx3
+        Qi = np.zeros((3, 3))
         pi = math.pi
         Qi[0] = np.array([-pi / 2, 0, 0])
         Qi[1] = np.array([pi / 2, 0, 0])
         Qi[2] = np.array([0, 0, 0])
-        Qi[3] = np.array([pi / 2, 0, 0])
-        Qi[4] = np.array([pi / 2, 0, 0])
-        Qi[5] = np.array([0, 0, 0])
 
         self.q_from_Bi_to_i = Qi
 
-        Qe = np.zeros((6+1, 3))
+        # orientation_of_endpoint : (n+1)xn
+        Qe = np.zeros((3+1, 3))
         Qe[3] = np.array([0, 0, pi / 2])
-        Qe[6] = np.array([0, 0, pi / 2])
 
         self.orientation_of_endpoint = Qe
 
-        # link vector
+        # link vector : (n+2)x(n+2)x3
         # from link i to link j
         # (from base link 0 to joint j
         # or from link i to end point)
-        cc = np.zeros((8, 8, 3))
+        cc = np.zeros((5, 5, 3))
         cc[1, 1] = np.array([0, 0, -0.5])
         cc[2, 2] = np.array([0, 0, -0.5])
         cc[3, 3] = np.array([0, 0, -0.5])
-        cc[4, 4] = np.array([0, 0, -0.5])
-        cc[5, 5] = np.array([0, 0, -0.5])
-        cc[6, 6] = np.array([0, 0, -0.5])
 
         cc[1, 2] = np.array([0, 0, 0.5])
         cc[2, 3] = np.array([0, 0, 0.5])
-        cc[3, 4] = np.array([0, 0, 0.5])
-        cc[4, 5] = np.array([0, 0, 0.5])
-        cc[5, 6] = np.array([0, 0, 0.5])
 
         cc[0, 1] = np.array([0, 1, 0])
-        cc[0, 4] = np.array([0, -1, 0])
-
-        cc[3, 7] = np.array([0, 0.5, 0])
-        cc[6, 7] = np.array([0, 0.5, 0])
+        cc[3, 4] = np.array([0, 0.5, 0])
 
         self.link_vector = cc
 
         self.link_num = J_type.shape[0]
 
-        #z轴上的单位向量
+        # z轴上的单位向量
         self.e_z = np.array([[0, 0, 1]]).T
 
         self.gravity = 0
@@ -157,7 +140,7 @@ class DynamicModel:
         taux = np.zeros((n, 1))
 
         num_e = 0
-        F_ex = np.zeros((n+6, n)) # 维数
+        F_ex = np.zeros((n+6, n))  # 维数
         for i in range(n):
             if self.connect_end[i] == 1:
                 joints = self.find_joint_connection(num_e)
@@ -167,9 +150,9 @@ class DynamicModel:
 
                 num_e += 1
                 A_I_i = AA[i+1]
-                Re0i = RR[i+1] - RR[0] + np.dot(A_I_i, self.link_vector[i+1, 7])
+                Re0i = RR[i+1] - RR[0] + np.dot(A_I_i, self.link_vector[i+1, n+1])
 
-                Me_i_1 = np.hstack((np.eye(3), np.zeros((3,3))))
+                Me_i_1 = np.hstack((np.eye(3), np.zeros((3, 3))))
                 Me_i_2 = np.hstack((self.tilde(Re0i), np.eye(3)))
                 Me_i_3 = np.hstack((JJ_tx_i.T, JJ_rx_i.T))
                 Me_i = np.vstack((Me_i_1, Me_i_2, Me_i_3))
@@ -257,10 +240,10 @@ class DynamicModel:
 
             ww[i+1] = ww[self.connect_lower[i]] + np.dot(A_I_i, self.e_z) * qd[i]
             # np的叉乘输入需要是行向量，进行了两次转置
-            # 注意：叉乘时连杆矢量 linkvector 在哪个坐标系下表示，公式简写，计算需要进行坐标转换
-            vv[i+1] = vv[self.connect_lower[i]] + \
-                      np.cross(ww[self.connect_lower[i]].T, np.dot(A_I_BB, self.link_vector[self.connect_lower[i], i+1]).T).T - \
-                      np.cross(ww[i+1].T, np.dot(A_I_i, self.link_vector[i+1, i+1]).T).T
+            # 注意：叉乘时连杆矢量 link vector 在哪个坐标系下表示，公式简写，计算需要进行坐标转换
+            vv[i+1] = vv[self.connect_lower[i]] + np.cross(ww[self.connect_lower[i]].T, np.dot(A_I_BB, self.link_vector[
+                self.connect_lower[i], i+1]).T).T - np.cross(ww[i+1].T, np.dot(A_I_i, self.link_vector[i+1, i+1]).T).T
+
         return vv, ww
 
     def calc_acceleration(self, AA, ww, vd0, wd0, q, qd, qdd):
@@ -276,7 +259,7 @@ class DynamicModel:
         :return: 输出各连杆 加速度、角加速度
         """
         n = self.link_num
-        A_I_0 = AA[0]
+        # A_I_0 = AA[0]
 
         wd = np.zeros((n+1, 3, 1))
         wd[0] = wd0
@@ -290,15 +273,13 @@ class DynamicModel:
 
             B_i = self.connect_lower[i]
 
-            wd[i+1] = wd[B_i] + \
-                      np.cross(ww[i+1].T, np.dot(A_I_i, self.e_z).T * qd[i]).T + \
-                      np.dot(A_I_i, self.e_z) * qdd[i]
+            wd[i+1] = wd[B_i] + np.cross(ww[i+1].T, np.dot(A_I_i, self.e_z).T * qd[i]).T + np.dot(
+                A_I_i, self.e_z) * qdd[i]
 
-            vd[i+1] = vd[B_i] + \
-                      np.cross(wd[B_i].T, np.dot(A_I_BB, self.link_vector[B_i, i+1]).T).T + \
-                      np.cross(ww[B_i].T, np.cross(ww[B_i].T, np.dot(A_I_BB, self.link_vector[B_i, i+1]).T)).T - \
-                      np.cross(wd[i+1].T, np.dot(A_I_i, self.link_vector[i+1, i+1]).T).T - \
-                      np.cross(ww[i+1].T, np.cross(ww[i+1].T, np.dot(A_I_i, self.link_vector[i+1, i+1]).T)).T
+            vd[i+1] = vd[B_i] + np.cross(wd[B_i].T, np.dot(A_I_BB, self.link_vector[B_i, i+1]).T).T + np.cross(
+                ww[B_i].T, np.cross(ww[B_i].T, np.dot(A_I_BB, self.link_vector[B_i, i+1]).T)).T - np.cross(
+                wd[i+1].T, np.dot(A_I_i, self.link_vector[i+1, i+1]).T).T - np.cross(
+                ww[i+1].T, np.cross(ww[i+1].T, np.dot(A_I_i, self.link_vector[i+1, i+1]).T)).T
         return vd, wd
 
     def calc_inertia_matrices(self, RR, AA):
@@ -335,12 +316,12 @@ class DynamicModel:
 
             JJ_tg += self.mass[i] * JJ_t[i-1]
 
-            HH_w += np.dot(np.dot(A_I_i, self.inertia[i]), A_I_i.T) \
-                    + self.mass[i] * np.dot(self.tilde(r0i).T, self.tilde(r0i))
-            HH_wq += np.dot(np.dot(np.dot(A_I_i, self.inertia[i]), A_I_i.T), JJ_r[i - 1]) \
-                    + self.mass[i] * np.dot(self.tilde(r0i), JJ_t[i - 1])
-            HH_q += np.dot(np.dot(JJ_r[i-1].T, np.dot(np.dot(A_I_i, self.inertia[i]), A_I_i.T)), JJ_r[i-1]) \
-                    + self.mass[i] * np.dot(JJ_t[i-1].T, JJ_t[i-1])
+            HH_w += np.dot(np.dot(A_I_i, self.inertia[i]), A_I_i.T) + self.mass[i] * np.dot(
+                self.tilde(r0i).T, self.tilde(r0i))
+            HH_wq += np.dot(np.dot(np.dot(A_I_i, self.inertia[i]), A_I_i.T), JJ_r[i - 1]) + self.mass[i] * np.dot(
+                self.tilde(r0i), JJ_t[i - 1])
+            HH_q += np.dot(np.dot(JJ_r[i - 1].T, np.dot(np.dot(
+                A_I_i, self.inertia[i]), A_I_i.T)), JJ_r[i - 1]) + self.mass[i] * np.dot(JJ_t[i - 1].T, JJ_t[i - 1])
 
         HH_w += np.dot(np.dot(AA[0], self.inertia[0]), AA[0].T)
 
@@ -380,14 +361,15 @@ class DynamicModel:
         :return: 广义力 (3+3+n)x1 向量
         """
 
+        RR = RR
         vv, ww = self.calc_velocity(AA, v0, w0, q, qd)
         vd, wd = self.calc_acceleration(AA, ww, vd0, wd0, q, qd, qdd)
 
         n = self.link_num
 
         FF0 = self.mass[0] * (vd[0] - self.gravity)
-        TT0 = np.dot(np.dot(np.dot(AA[0], self.inertia[0]), AA[0].T), wd[0]) \
-              + np.cross(ww[0].T, (np.dot(np.dot(np.dot(AA[0], self.inertia[0]), AA[0].T), ww[0])).T).T
+        TT0 = np.dot(np.dot(np.dot(AA[0], self.inertia[0]), AA[0].T), wd[0]) + np.cross(
+            ww[0].T, (np.dot(np.dot(np.dot(AA[0], self.inertia[0]), AA[0].T), ww[0])).T).T
 
         # calculation of inertia force & torque of each link
         FF = np.zeros((n+1, 3, 1))
@@ -396,8 +378,8 @@ class DynamicModel:
         for i in range(n+1):
             FF[i] = self.mass[i] * (vd[i] - self.gravity)
 
-            TT[i] = np.dot(np.dot(np.dot(AA[i], self.inertia[i]), AA[i].T), wd[i]) \
-                    + np.cross(ww[i].T, np.dot(np.dot(np.dot(AA[i], self.inertia[i]), AA[i].T), ww[i]).T).T
+            TT[i] = np.dot(np.dot(np.dot(AA[i], self.inertia[i]), AA[i].T), wd[i]) + np.cross(
+                ww[i].T, np.dot(np.dot(np.dot(AA[i], self.inertia[i]), AA[i].T), ww[i]).T).T
 
         # equilibrium of forces & torques on each link
         Fj = np.zeros((n, 3, 1))
@@ -414,9 +396,12 @@ class DynamicModel:
 
             for j in range(i+1, n+1):
                 A_I_i = AA[i]
-                T += self.connect_upper[i-1, j-1] * (np.cross(np.dot(A_I_i, (self.link_vector[i, j]-self.link_vector[i, i])).T, Fj[j-1].T).T + Tj[j-1])
+                T += self.connect_upper[i-1, j-1] * (np.cross(np.dot(A_I_i, (self.link_vector[i, j]-self.link_vector[
+                    i, i])).T, Fj[j-1].T).T + Tj[j-1])
+
             Tj[i-1] = TT[i] + T - np.cross(np.dot(AA[i], self.link_vector[i, i]).T, FF[i].T).T
-            Tj[i-1] -= self.connect_end[i-1] * (np.cross(np.dot(AA[i], (self.link_vector[i, n+1] - self.link_vector[i, i])).T, Fe[:, i-1].reshape(1, 3)).T + Te[:, i-1].reshape(3, 1))
+            Tj[i-1] -= self.connect_end[i-1] * (np.cross(np.dot(AA[i], (self.link_vector[i, n+1] - self.link_vector[
+                i, i])).T, Fe[:, i-1].reshape(1, 3)).T + Te[:, i-1].reshape(3, 1))
 
         # equilibrium on link 0
         F = np.zeros((3, 1))
@@ -429,7 +414,7 @@ class DynamicModel:
 
         for i in range(n):
             if self.connect_base[i]:
-                T += self.connect_base[i] * (np.cross(np.dot(AA[0], self.link_vector[0,i+1]).T, Fj[i].T).T + Tj[i])
+                T += self.connect_base[i] * (np.cross(np.dot(AA[0], self.link_vector[0, i+1]).T, Fj[i].T).T + Tj[i])
         TT0 += T
 
         # calculation of torques of each joint
@@ -537,7 +522,7 @@ class DynamicModel:
         A_i_EE = self.rpy_to_direction_cosine(roll, pitch, yaw).T
 
         ORI_e = np.dot(AA[k], A_i_EE)
-        POS_e = RR[k] + np.dot(AA[k], self.link_vector[k, 7])
+        POS_e = RR[k] + np.dot(AA[k], self.link_vector[k, 4])
 
         POS_j[n] = POS_e.reshape(3, 1)
         ORI_j[n] = ORI_e
@@ -601,7 +586,7 @@ class DynamicModel:
     def aw_vector_rotation(self, w0):
         dt = self.d_time
         w0 = w0.reshape(3)
-        if np.linalg.norm(w0, 2)==0:
+        if np.linalg.norm(w0, 2) == 0:
             E0 = np.eye(3)
         else:
             th = np.linalg.norm(w0, 2) * dt
@@ -617,7 +602,6 @@ class DynamicModel:
                             w[2] * w[1] * (1 - np.cos(th)) + w[0] * np.sin(th),
                             np.cos(th) + pow(w[2], 2) * (1 - np.cos(th))]])
         return E0
-
 
     def forward_dynamics_RungeKutta(self, R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau):
         """
@@ -664,9 +648,9 @@ class DynamicModel:
 
         tmp_vd0, tmp_wd0, tmp_qdd = self.foward_dynamics(R0 + K3_R0 / 2, A0 + K3_A0 / 2, v0 + K3_v0 / 2, w0 + K3_w0 / 2,
                                                          q + K3_q / 2, qd + K3_qd / 2, F0, T0, Fe, Te, tau)
-        K4_R0 = dt * (v0 + K3_v0 )
-        K4_A0 = np.dot(self.aw_vector_rotation((w0 + K3_w0 )), A0) - A0
-        K4_q = dt * (qd + K3_qd )
+        K4_R0 = dt * (v0 + K3_v0)
+        K4_A0 = np.dot(self.aw_vector_rotation((w0 + K3_w0)), A0) - A0
+        K4_q = dt * (qd + K3_qd)
         K4_v0 = dt * tmp_vd0
         K4_w0 = dt * tmp_wd0
         K4_qd = dt * tmp_qdd
@@ -691,9 +675,9 @@ class DynamicModel:
 if __name__ == '__main__':
     pi = math.pi
 
-    q = np.zeros((6,1))
-    qd = np.zeros((6,1))
-    qdd = np.zeros((6,1))
+    q = np.zeros((3, 1))
+    qd = np.zeros((3, 1))
+    qdd = np.zeros((3, 1))
 
     v0 = np.array([[3, 2, 1]]).T
     w0 = np.array([[1, 2, 3]]).T
@@ -704,12 +688,12 @@ if __name__ == '__main__':
     Q0 = np.array([[0, 0, 0]]).T
     A0 = np.eye(3)
 
-    Fe = np.zeros((3,6))
-    Te = np.zeros((3,6))
+    Fe = np.zeros((3, 3))
+    Te = np.zeros((3, 3))
     F0 = np.array([[0, 0, 0]]).T
     T0 = np.array([[0, 0, 0]]).T
 
-    tau = np.zeros(6)
+    tau = np.zeros(3)
 
     model = DynamicModel()
     model.forward_dynamics_RungeKutta(R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
