@@ -3,34 +3,9 @@ import math
 from DynamicModel import DynamicModel
 import matplotlib.pyplot as plt
 
-# pi = math.pi
-#
-# q = np.zeros((3, 1))
-# qd = np.zeros((3, 1))
-# qdd = np.zeros((3, 1))
-#
-# v0 = np.array([[3, 2, 1]]).T
-# w0 = np.array([[1, 2, 3]]).T
-# vd0 = np.array([[0, 0, 0]]).T
-# wd0 = np.array([[0, 0, 0]]).T
-#
-# R0 = np.array([[0, 0, 0]]).T
-# Q0 = np.array([[0, 0, 0]]).T
-# A0 = np.eye(3)
-#
-# Fe = np.zeros((3, 6))
-# Te = np.zeros((3, 6))
-#
-# F0 = np.array([[0, 0, 0]]).T
-# T0 = np.array([[0, 0, 0]]).T
-#
-# tau = np.zeros(3)
-
-# model = DynamicModel()
-# model.forward_dynamics_RungeKutta(R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
-
 pi = math.pi
 model = DynamicModel()
+
 
 class ArmEnv(object):
 
@@ -60,21 +35,7 @@ class ArmEnv(object):
 
         self.d_time = model.d_time
 
-        # tau = np.zeros(3)
-        # self.tau = tau
-
     def step(self, action):
-
-        # q = self.joint[:, 0].reshape(3, 1)
-        # qd = self.joint[:, 1].reshape(3, 1)
-        # qdd = self.joint[:, 2].reshape(3, 1)
-        #
-        # R0 = self.base[:, 0].reshape(3, 1)
-        # A0 = self.base[:, 1:4]
-        # v0 = self.base[:, 4].reshape(3, 1)
-        # w0 = self.base[:, 5].reshape(3, 1)
-        # vd0 = self.base[:, 6].reshape(3, 1)
-        # wd0 = self.base[:, 7].reshape(3, 1)
 
         q, qd, qdd, R0, A0, v0, w0, vd0, wd0 = self.get_state()
 
