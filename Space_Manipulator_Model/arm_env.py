@@ -33,7 +33,15 @@ class ArmEnv(object):
         RR = model.calc_position(R0, AA, q)
         self.state.append(RR[-1])
 
+        end_effector_pos = RR[-1]
+        base_pos = RR[0]
+        self.s = np.hstack((end_effector_pos, base_pos))
+
         self.d_time = model.d_time
+
+        self.grab_buffer = 0.5
+        self.get_point = False
+        self.grab_counter = 0
 
     def step(self, action):
 
@@ -50,6 +58,8 @@ class ArmEnv(object):
         vd0, wd0, qdd = model.foward_dynamics( R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
         R0, A0, v0, w0, q, qd = model.forward_dynamics_RungeKutta( R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
 
+        q = q % (2 * pi)
+
         self.joint[:, 0] = q.reshape(3)
         self.joint[:, 1] = qd.reshape(3)
         self.joint[:, 2] = qdd.reshape(3)
@@ -63,13 +73,37 @@ class ArmEnv(object):
 
         AA = model.calc_coordinate_transform(A0, q)
         RR = model.calc_position(R0, AA, q)
+        end_effector_pos = RR[-1]
+        base_pos = RR[0]
         self.state.append(RR[-1])
+        self.s = np.hstack((end_effector_pos, base_pos))
+        r = self.reward()
+
+        return self.s, r, self.get_point
 
     def reward(self):
-        pass
+        t = 50
+
+        desired_pos = np.array([0, 3, 0.5, 0, 0, 0])
+        distance = self.s - desired_pos
+
+        abs_distance = np.sqrt(np.sum(np.square(distance)))
+        r = -abs_distance
+
+        if abs_distance < self.grab_buffer and (not self.get_point):
+            r += 1
+            self.grab_counter += 1
+            if self.grab_counter > t:
+                r += 10
+                self.get_point = True
+        elif abs_distance > self.grab_buffer:
+            self.grab_counter = 0
+            self.get_point = False
+        return r
 
     def reset(self):
         self.__init__()
+        return self.s
 
     def get_state(self):
         q = self.joint[:, 0].reshape(3, 1)
@@ -88,20 +122,32 @@ class ArmEnv(object):
 if __name__ == '__main__':
     arm_env = ArmEnv()
 
+    s_dim = arm_env.s.shape[0]
+    a_dim = arm_env.joint.shape[1]
+
+    a_bound = [-10, 10]
+
+
+
     desired_q = np.array([[0.3, 0.2, 0.1]]).T
     gain_spring = 10
     gain_dumper = 10
 
     d_time = arm_env.d_time
     q_ans = []
-    for time in np.arange(0.0, 10, d_time):
+    for time in np.arange(0.0, 2, d_time):
 
         state = arm_env.state
+        a = np.random.normal(size=a_dim)*10
+        a = a.clip(-10, 10)
+
         q, qd, qdd, R0, A0, v0, w0, vd0, wd0 = arm_env.get_state()
         q_ans.append(np.array(q.reshape(3)))
         print(time)
-        tau = gain_spring * (desired_q - q) - gain_dumper * qd
-        arm_env.step(tau)
+
+        arm_env.step(a)
+
+    arm_env.reset()
 
     fig = plt.figure()
     plt.plot(q_ans)

@@ -83,7 +83,7 @@ class DynamicModel:
         self.e_z = np.array([[0, 0, 1]]).T
 
         self.gravity = 0
-        self.d_time = 0.01
+        self.d_time = 0.1
 
     def foward_dynamics(self, R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau):
         """

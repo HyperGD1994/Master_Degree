@@ -46,7 +46,7 @@ env = ArmEnv()
 # ACTION_DIM = env.action_dim
 # ACTION_BOUND = env.action_bound
 
-STATE_DIM = env.s.shape[1]
+STATE_DIM = env.s.shape[0]
 ACTION_DIM = env.joint.shape[1]
 
 ACTION_BOUND = [-10, 10]
@@ -107,7 +107,7 @@ class Actor(object):
 
     def choose_action(self, s):
         s = s[np.newaxis, :]  # single state
-        return self.sess.run(self.a, feed_dict={S: s})[0]  # single action
+        return self.sess.run(self.a, feed_dict={S: s})  # single action
 
     def add_grad_to_graph(self, a_grads):
         with tf.variable_scope('policy_grads'):
@@ -188,7 +188,11 @@ class Memory(object):
         self.pointer = 0
 
     def store_transition(self, s, a, r, s_):
-        transition = np.hstack((s, a, [r], s_))
+        s = s[np.newaxis, :]
+        s_ = s_[np.newaxis, :]
+        r = np.array([r])
+
+        transition = np.hstack((s, a, r[np.newaxis,:], s_))
         index = self.pointer % self.capacity  # replace the old memory with new memory
         self.data[index, :] = transition
         self.pointer += 1
@@ -209,7 +213,7 @@ actor.add_grad_to_graph(critic.a_grads)
 M = Memory(MEMORY_CAPACITY, dims=2 * STATE_DIM + ACTION_DIM + 1)
 
 saver = tf.train.Saver()
-path = './' + MODE[n_model]
+path = '/save' + MODE[n_model]
 
 if LOAD:
     saver.restore(sess, tf.train.latest_checkpoint(path))
@@ -226,8 +230,8 @@ def train():
 
         for t in range(MAX_EP_STEPS):
             # while True:
-            if RENDER:
-                env.render()
+            # if RENDER:
+            #     env.render()
 
             # Added exploration noise
             a = actor.choose_action(s)
@@ -256,6 +260,12 @@ def train():
                       result,
                       '| R: %i' % int(ep_reward),
                       '| Explore: %.2f' % var,
+                      '| end %.2f' % s[0],
+                      '  %.2f' % s[1],
+                      '  %.2f' % s[2],
+                      '| base %.2f' % s[3],
+                      '  %.2f' % s[4],
+                      '  %.2f' % s[5],
                       )
                 break
 
