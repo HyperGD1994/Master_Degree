@@ -22,20 +22,21 @@ import numpy as np
 import os
 import shutil
 from arm_env import ArmEnv
+import matplotlib.pyplot as plt
 
 np.random.seed(1)
 tf.set_random_seed(1)
 
-MAX_EPISODES = 600
-MAX_EP_STEPS = 200
+MAX_EPISODES = 1000
+MAX_EP_STEPS = 300
 LR_A = 1e-4  # learning rate for actor
 LR_C = 1e-4  # learning rate for critic
 GAMMA = 0.9  # reward discount
 REPLACE_ITER_A = 1100
 REPLACE_ITER_C = 1000
 MEMORY_CAPACITY = 5000
-BATCH_SIZE = 16
-VAR_MIN = 0.1
+BATCH_SIZE = 32
+VAR_MIN = 0.01
 RENDER = True
 LOAD = False
 MODE = ['easy', 'hard']
@@ -212,8 +213,10 @@ actor.add_grad_to_graph(critic.a_grads)
 
 M = Memory(MEMORY_CAPACITY, dims=2 * STATE_DIM + ACTION_DIM + 1)
 
-saver = tf.train.Saver()
-path = '/save' + MODE[n_model]
+ans_r = []
+
+# saver = tf.train.Saver()
+# path = '/save' + MODE[n_model]
 
 if LOAD:
     saver.restore(sess, tf.train.latest_checkpoint(path))
@@ -266,22 +269,29 @@ def train():
                       '| base %.2f' % s[3],
                       '  %.2f' % s[4],
                       '  %.2f' % s[5],
+                      '%.i'% t
                       )
+
+                ans_r.append(ep_reward)
                 break
 
-    if os.path.isdir(path): shutil.rmtree(path)
-    os.mkdir(path)
-    ckpt_path = os.path.join('./' + MODE[n_model], 'DDPG.ckpt')
-    save_path = saver.save(sess, ckpt_path, write_meta_graph=False)
-    print("\nSave Model %s\n" % save_path)
+    # if os.path.isdir(path):
+    #     shutil.rmtree(path)
+    # os.mkdir(path)
+    # ckpt_path = os.path.join('./' + MODE[n_model], 'DDPG.ckpt')
+    # save_path = saver.save(sess, ckpt_path, write_meta_graph=False)
+    # print("\nSave Model %s\n" % save_path)
+    fig = plt.figure()
+    plt.plot(ans_r)
+    plt.show()
 
 
 def eval():
-    env.set_fps(30)
+    # env.set_fps(30)
     s = env.reset()
     while True:
-        if RENDER:
-            env.render()
+        # if RENDER:
+        #     env.render()
         a = actor.choose_action(s)
         s_, r, done = env.step(a)
         s = s_

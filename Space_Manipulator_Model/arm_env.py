@@ -43,6 +43,9 @@ class ArmEnv(object):
         self.get_point = False
         self.grab_counter = 0
 
+        self.target_pos = np.array([0, 3, 0.5, 0, 0, 0])
+        self.best_distance = np.sqrt(np.sum(np.square(self.s - self.target_pos)))
+
     def step(self, action):
 
         q, qd, qdd, R0, A0, v0, w0, vd0, wd0 = self.get_state()
@@ -84,21 +87,32 @@ class ArmEnv(object):
     def reward(self):
         t = 50
 
-        desired_pos = np.array([0, 3, 0.5, 0, 0, 0])
+        # desired_pos = np.array([0, 3, 0.5, 0, 0, 0])
+        desired_pos = self.target_pos
+
         distance = self.s - desired_pos
 
         abs_distance = np.sqrt(np.sum(np.square(distance)))
         r = -abs_distance
 
+        if abs_distance < self.best_distance:
+            self.best_distance = abs_distance
+            r *= 0.1
+
+
         if abs_distance < self.grab_buffer and (not self.get_point):
-            r += 1
+            r += 10
             self.grab_counter += 1
             if self.grab_counter > t:
-                r += 10
+                r += 100
                 self.get_point = True
         elif abs_distance > self.grab_buffer:
             self.grab_counter = 0
             self.get_point = False
+
+        if abs_distance > 3:
+            self.get_point = True
+            r -= 500
         return r
 
     def reset(self):
