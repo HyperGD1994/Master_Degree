@@ -28,12 +28,12 @@ np.random.seed(1)
 tf.set_random_seed(1)
 
 MAX_EPISODES = 1000
-MAX_EP_STEPS = 300
+MAX_EP_STEPS = 500
 LR_A = 1e-4  # learning rate for actor
 LR_C = 1e-4  # learning rate for critic
 GAMMA = 0.9  # reward discount
-REPLACE_ITER_A = 1100
-REPLACE_ITER_C = 1000
+REPLACE_ITER_A = 110
+REPLACE_ITER_C = 100
 MEMORY_CAPACITY = 5000
 BATCH_SIZE = 32
 VAR_MIN = 0.01
@@ -48,7 +48,7 @@ env = ArmEnv()
 # ACTION_BOUND = env.action_bound
 
 STATE_DIM = env.s.shape[0]
-ACTION_DIM = env.joint.shape[1]
+ACTION_DIM = env.joint.shape[0]
 
 ACTION_BOUND = [-10, 10]
 
@@ -223,7 +223,7 @@ if LOAD:
 else:
     sess.run(tf.global_variables_initializer())
 
-
+a_record = []
 def train():
     var = 2.  # control exploration
 
@@ -239,6 +239,7 @@ def train():
             # Added exploration noise
             a = actor.choose_action(s)
             a = np.clip(np.random.normal(a, var), *ACTION_BOUND)  # add randomness to action selection for exploration
+            a_record.append(a[0])
             s_, r, done = env.step(a)
             M.store_transition(s, a, r, s_)
 
@@ -273,6 +274,9 @@ def train():
                       )
 
                 ans_r.append(ep_reward)
+                # p = env.state
+                # plt.plot(p)
+                # plt.show()
                 break
 
     # if os.path.isdir(path):
@@ -281,9 +285,7 @@ def train():
     # ckpt_path = os.path.join('./' + MODE[n_model], 'DDPG.ckpt')
     # save_path = saver.save(sess, ckpt_path, write_meta_graph=False)
     # print("\nSave Model %s\n" % save_path)
-    fig = plt.figure()
-    plt.plot(ans_r)
-    plt.show()
+
 
 
 def eval():

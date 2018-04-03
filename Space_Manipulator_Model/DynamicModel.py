@@ -1,89 +1,32 @@
 import numpy as np
 import math
+from arm_config import ArmConfig
+
+arm = ArmConfig()
 
 
 class DynamicModel:
+
     def __init__(self):
-        # n is the number of link, without the base(no.0)
 
-        # connect_lower : 1xn
-        self.connect_lower = np.array([0, 1, 2])  # base's lower connect is -1
+        self.d_time = arm.d_time
+        self.gravity = arm.gravity
+        self.link_num = arm.link_num
 
-        # connect_upper : nxn
-        self.connect_upper = np.array([[-1, 1, 0],
-                                       [0, -1, 1],
-                                       [0, 0, -1]])
+        self.connect_lower =arm.connect_lower
+        self.connect_upper = arm.connect_upper
+        self.connect_end = arm.connect_end
+        self.connect_base = arm.connect_base
 
-        # connect_base : 1xn
-        # connect_end  : 1xn
-        S0 = np.array([1, 0, 0])
-        SE = np.array([0, 0, 1])
-        self.connect_end = SE
-        self.connect_base = S0
+        self.inertia = arm.inertia
+        self.mass = arm.mass
 
-        J_type = np.array(['R', 'R', 'R'])
+        self.q_from_Bi_to_i = arm.q_from_Bi_to_i
+        self.orientation_of_endpoint = arm.orientation_of_endpoint
 
-        # inertia : (n+1) x (3x3)
-        inertia = np.zeros((4, 3, 3))
-        inertia[0] = np.array([[10, 0, 0],
-                               [0, 10, 0],
-                               [0, 0, 10]])
+        self.link_vector = arm.link_vector
 
-        inertia[1] = np.array([[1, 0, 0],
-                               [0, 1, 0],
-                               [0, 0, 0.1]])
-
-        inertia[2] = np.array([[1, 0, 0],
-                               [0, 0.1, 0],
-                               [0, 0, 1]])
-
-        inertia[3] = np.array([[1, 0, 0],
-                               [0, 0.1, 0],
-                               [0, 0, 1]])
-        self.inertia = inertia
-
-        # mass : 1x(n+1)
-        self.mass = np.array([100, 10, 10, 10])
-
-        # q_from_Bi_to_i : nx3
-        Qi = np.zeros((3, 3))
-        pi = math.pi
-        Qi[0] = np.array([-pi / 2, 0, 0])
-        Qi[1] = np.array([pi / 2, 0, 0])
-        Qi[2] = np.array([0, 0, 0])
-
-        self.q_from_Bi_to_i = Qi
-
-        # orientation_of_endpoint : (n+1)xn
-        Qe = np.zeros((3+1, 3))
-        Qe[3] = np.array([0, 0, pi / 2])
-
-        self.orientation_of_endpoint = Qe
-
-        # link vector : (n+2)x(n+2)x3
-        # from link i to link j
-        # (from base link 0 to joint j
-        # or from link i to end point)
-        cc = np.zeros((5, 5, 3))
-        cc[1, 1] = np.array([0, 0, -0.5])
-        cc[2, 2] = np.array([0, 0, -0.5])
-        cc[3, 3] = np.array([0, 0, -0.5])
-
-        cc[1, 2] = np.array([0, 0, 0.5])
-        cc[2, 3] = np.array([0, 0, 0.5])
-
-        cc[0, 1] = np.array([0, 1, 0])
-        cc[3, 4] = np.array([0, 0.5, 0])
-
-        self.link_vector = cc
-
-        self.link_num = J_type.shape[0]
-
-        # z轴上的单位向量
-        self.e_z = np.array([[0, 0, 1]]).T
-
-        self.gravity = 0
-        self.d_time = 0.1
+        self.e_z = arm.e_z
 
     def foward_dynamics(self, R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau):
         """
@@ -185,10 +128,11 @@ class DynamicModel:
         :return: link_num 个旋转矩阵，分别代表各关节的坐标转换，第0个为基座
         """
 
-        link_num = q.shape[0]
-        AA = np.zeros((link_num+1, 3, 3))
+        # link_num = q.shape[0]
+        n = self.link_num
+        AA = np.zeros((n+1, 3, 3))
         AA[0] = A0
-        for i in range(link_num):
+        for i in range(n):
             roll = self.q_from_Bi_to_i[i, 0]
             pitch = self.q_from_Bi_to_i[i, 1]
             yaw = self.q_from_Bi_to_i[i, 2] + q[i]
@@ -205,11 +149,11 @@ class DynamicModel:
         :param q: 关节角，此处仅用来得到连杆数量 nx1
         :return: nx3矩阵，为每个连杆中心位置坐标（基准系下）
         """
-        link_num = q.shape[0]
-        RR = np.zeros((link_num+1, 3))
+        n =self.link_num
+        RR = np.zeros((n+1, 3))
         RR[0] = R0.reshape(3)
 
-        for i in range(link_num):
+        for i in range(n):
             RR[i+1] = RR[self.connect_lower[i]] + \
                       np.dot(AA[self.connect_lower[i]], self.link_vector[self.connect_lower[i], i+1]) - \
                       np.dot(AA[i+1], self.link_vector[i+1, i+1])
@@ -522,7 +466,7 @@ class DynamicModel:
         A_i_EE = self.rpy_to_direction_cosine(roll, pitch, yaw).T
 
         ORI_e = np.dot(AA[k], A_i_EE)
-        POS_e = RR[k] + np.dot(AA[k], self.link_vector[k, 4])
+        POS_e = RR[k] + np.dot(AA[k], self.link_vector[k, 3])
 
         POS_j[n] = POS_e.reshape(3, 1)
         ORI_j[n] = ORI_e
@@ -675,9 +619,9 @@ class DynamicModel:
 if __name__ == '__main__':
     pi = math.pi
 
-    q = np.zeros((3, 1))
-    qd = np.zeros((3, 1))
-    qdd = np.zeros((3, 1))
+    q = np.zeros((2, 1))
+    qd = np.zeros((2, 1))
+    qdd = np.zeros((2, 1))
 
     v0 = np.array([[3, 2, 1]]).T
     w0 = np.array([[1, 2, 3]]).T
@@ -693,7 +637,7 @@ if __name__ == '__main__':
     F0 = np.array([[0, 0, 0]]).T
     T0 = np.array([[0, 0, 0]]).T
 
-    tau = np.zeros(3)
+    tau = np.zeros(2)
 
     model = DynamicModel()
     model.forward_dynamics_RungeKutta(R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)

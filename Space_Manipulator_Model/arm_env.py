@@ -11,9 +11,9 @@ class ArmEnv(object):
 
     def __init__(self):
 
-        q = np.zeros((3, 1))
-        qd = np.zeros((3, 1))
-        qdd = np.zeros((3, 1))
+        q = np.zeros((2, 1))
+        qd = np.zeros((2, 1))
+        qdd = np.zeros((2, 1))
 
         self.joint = np.hstack((q, qd, qdd))
 
@@ -43,8 +43,8 @@ class ArmEnv(object):
         self.get_point = False
         self.grab_counter = 0
 
-        self.target_pos = np.array([0, 3, 0.5, 0, 0, 0])
-        self.best_distance = np.sqrt(np.sum(np.square(self.s - self.target_pos)))
+        self.target_pos = np.array([0, 1, 0.5])
+        self.best_distance = np.sqrt(np.sum(np.square(self.s[0:3] - self.target_pos)))
 
     def step(self, action):
 
@@ -63,9 +63,9 @@ class ArmEnv(object):
 
         q = q % (2 * pi)
 
-        self.joint[:, 0] = q.reshape(3)
-        self.joint[:, 1] = qd.reshape(3)
-        self.joint[:, 2] = qdd.reshape(3)
+        self.joint[:, 0] = q.reshape(2)
+        self.joint[:, 1] = qd.reshape(2)
+        self.joint[:, 2] = qdd.reshape(2)
 
         self.base[:, 0] = R0.reshape(3)
         self.base[:, 1:4] = A0
@@ -90,14 +90,14 @@ class ArmEnv(object):
         # desired_pos = np.array([0, 3, 0.5, 0, 0, 0])
         desired_pos = self.target_pos
 
-        distance = self.s - desired_pos
+        distance = self.s[0:3] - desired_pos
 
         abs_distance = np.sqrt(np.sum(np.square(distance)))
         r = -abs_distance
 
         if abs_distance < self.best_distance:
             self.best_distance = abs_distance
-            r *= 0.1
+            r += 1
 
 
         if abs_distance < self.grab_buffer and (not self.get_point):
@@ -111,18 +111,18 @@ class ArmEnv(object):
             self.get_point = False
 
         if abs_distance > 3:
-            self.get_point = True
-            r -= 500
+            self.__init__()
+            r -= 100
         return r
 
     def reset(self):
-        self.__init__()
+        self.get_point = True
         return self.s
 
     def get_state(self):
-        q = self.joint[:, 0].reshape(3, 1)
-        qd = self.joint[:, 1].reshape(3, 1)
-        qdd = self.joint[:, 2].reshape(3, 1)
+        q = self.joint[:, 0].reshape(2, 1)
+        qd = self.joint[:, 1].reshape(2, 1)
+        qdd = self.joint[:, 2].reshape(2, 1)
 
         R0 = self.base[:, 0].reshape(3, 1)
         A0 = self.base[:, 1:4]
@@ -137,13 +137,12 @@ if __name__ == '__main__':
     arm_env = ArmEnv()
 
     s_dim = arm_env.s.shape[0]
-    a_dim = arm_env.joint.shape[1]
+    a_dim = arm_env.joint.shape[0]
 
     a_bound = [-10, 10]
 
 
-
-    desired_q = np.array([[0.3, 0.2, 0.1]]).T
+    desired_q = np.array([[0.3, 0.2]]).T
     gain_spring = 10
     gain_dumper = 10
 
@@ -156,7 +155,7 @@ if __name__ == '__main__':
         a = a.clip(-10, 10)
 
         q, qd, qdd, R0, A0, v0, w0, vd0, wd0 = arm_env.get_state()
-        q_ans.append(np.array(q.reshape(3)))
+        q_ans.append(np.array(q.reshape(2)))
         print(time)
 
         arm_env.step(a)
