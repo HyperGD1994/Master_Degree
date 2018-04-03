@@ -166,6 +166,7 @@ if __name__ == '__main__':
     plt.plot(q_ans)
     plt.show()
 
+a.reverse
 
 
 
