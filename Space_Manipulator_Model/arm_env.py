@@ -1,19 +1,24 @@
 import numpy as np
 import math
 from DynamicModel import DynamicModel
+from arm_config import ArmConfig
 import matplotlib.pyplot as plt
 
 pi = math.pi
 model = DynamicModel()
+config = ArmConfig()
 
 
 class ArmEnv(object):
 
     def __init__(self):
 
-        q = np.zeros((2, 1))
-        qd = np.zeros((2, 1))
-        qdd = np.zeros((2, 1))
+        self.link_num = config.link_num
+        n = self.link_num
+
+        q = np.zeros((n, 1))
+        qd = np.zeros((n, 1))
+        qdd = np.zeros((n, 1))
 
         self.joint = np.hstack((q, qd, qdd))
 
@@ -29,25 +34,27 @@ class ArmEnv(object):
         self.base = np.hstack((R0, A0, v0, w0, vd0, wd0))
 
         AA = model.calc_coordinate_transform(A0, q)
-        self.state = []
         RR = model.calc_position(R0, AA, q)
-        self.state.append(RR[-1])
+        self.state_record = []
+        self.state_record.append(RR[-1])
 
         end_effector_pos = RR[-1]
         base_pos = RR[0]
+
         self.s = np.hstack((end_effector_pos, base_pos))
 
-        self.d_time = model.d_time
+        self.d_time = config.d_time
 
-        self.grab_buffer = 0.5
+        self.grab_buffer = 0.1
         self.get_point = False
         self.grab_counter = 0
 
-        self.target_pos = np.array([0, 1, 0.5])
+        self.target_pos = np.array([0.5, 2, 0])
         self.best_distance = np.sqrt(np.sum(np.square(self.s[0:3] - self.target_pos)))
 
     def step(self, action):
 
+        n = self.link_num
         q, qd, qdd, R0, A0, v0, w0, vd0, wd0 = self.get_state()
 
         tau = action
@@ -63,9 +70,9 @@ class ArmEnv(object):
 
         q = q % (2 * pi)
 
-        self.joint[:, 0] = q.reshape(2)
-        self.joint[:, 1] = qd.reshape(2)
-        self.joint[:, 2] = qdd.reshape(2)
+        self.joint[:, 0] = q.reshape(n)
+        self.joint[:, 1] = qd.reshape(n)
+        self.joint[:, 2] = qdd.reshape(n)
 
         self.base[:, 0] = R0.reshape(3)
         self.base[:, 1:4] = A0
@@ -78,7 +85,7 @@ class ArmEnv(object):
         RR = model.calc_position(R0, AA, q)
         end_effector_pos = RR[-1]
         base_pos = RR[0]
-        self.state.append(RR[-1])
+        self.state_record.append(RR[-1])
         self.s = np.hstack((end_effector_pos, base_pos))
         r = self.reward()
 
@@ -99,7 +106,6 @@ class ArmEnv(object):
             self.best_distance = abs_distance
             r += 1
 
-
         if abs_distance < self.grab_buffer and (not self.get_point):
             r += 10
             self.grab_counter += 1
@@ -111,18 +117,21 @@ class ArmEnv(object):
             self.get_point = False
 
         if abs_distance > 3:
-            self.__init__()
+            self.get_point = True
             r -= 100
         return r
 
     def reset(self):
-        self.get_point = True
+        self.__init__()
         return self.s
 
     def get_state(self):
-        q = self.joint[:, 0].reshape(2, 1)
-        qd = self.joint[:, 1].reshape(2, 1)
-        qdd = self.joint[:, 2].reshape(2, 1)
+
+        n = self.link_num
+
+        q = self.joint[:, 0].reshape(n, 1)
+        qd = self.joint[:, 1].reshape(n, 1)
+        qdd = self.joint[:, 2].reshape(n, 1)
 
         R0 = self.base[:, 0].reshape(3, 1)
         A0 = self.base[:, 1:4]
@@ -148,9 +157,9 @@ if __name__ == '__main__':
 
     d_time = arm_env.d_time
     q_ans = []
-    for time in np.arange(0.0, 2, d_time):
+    for time in np.arange(0.0, 10, d_time):
 
-        state = arm_env.state
+        state = arm_env.state_record
         a = np.random.normal(size=a_dim)*10
         a = a.clip(-10, 10)
 
@@ -163,10 +172,8 @@ if __name__ == '__main__':
     arm_env.reset()
 
     fig = plt.figure()
-    plt.plot(q_ans)
+    plt.plot(state)
     plt.show()
-
-a.reverse
 
 
 

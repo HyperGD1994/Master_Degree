@@ -29,14 +29,14 @@ tf.set_random_seed(1)
 
 MAX_EPISODES = 1000
 MAX_EP_STEPS = 500
-LR_A = 1e-4  # learning rate for actor
-LR_C = 1e-4  # learning rate for critic
+LR_A = 1e-5  # learning rate for actor
+LR_C = 1e-5  # learning rate for critic
 GAMMA = 0.9  # reward discount
-REPLACE_ITER_A = 110
-REPLACE_ITER_C = 100
+REPLACE_ITER_A = 1100
+REPLACE_ITER_C = 1000
 MEMORY_CAPACITY = 5000
 BATCH_SIZE = 32
-VAR_MIN = 0.01
+VAR_MIN = 0.1
 RENDER = True
 LOAD = False
 MODE = ['easy', 'hard']
@@ -50,7 +50,7 @@ env = ArmEnv()
 STATE_DIM = env.s.shape[0]
 ACTION_DIM = env.joint.shape[0]
 
-ACTION_BOUND = [-10, 10]
+ACTION_BOUND = [-20, 20]
 
 # all placeholder for tf
 with tf.name_scope('S'):
@@ -218,10 +218,10 @@ ans_r = []
 # saver = tf.train.Saver()
 # path = '/save' + MODE[n_model]
 
-if LOAD:
-    saver.restore(sess, tf.train.latest_checkpoint(path))
-else:
-    sess.run(tf.global_variables_initializer())
+# if LOAD:
+#     saver.restore(sess, tf.train.latest_checkpoint(path))
+# else:
+sess.run(tf.global_variables_initializer())
 
 a_record = []
 def train():
