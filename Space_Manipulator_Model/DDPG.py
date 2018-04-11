@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 np.random.seed(1)
 tf.set_random_seed(1)
 
-MAX_EPISODES = 1000
+MAX_EPISODES = 50
 MAX_EP_STEPS = 500
 LR_A = 1e-5  # learning rate for actor
 LR_C = 1e-5  # learning rate for critic
@@ -38,7 +38,7 @@ MEMORY_CAPACITY = 5000
 BATCH_SIZE = 32
 VAR_MIN = 0.1
 RENDER = True
-LOAD = False
+LOAD = True
 MODE = ['easy', 'hard']
 n_model = 1
 
@@ -50,7 +50,7 @@ env = ArmEnv()
 STATE_DIM = env.s.shape[0]
 ACTION_DIM = env.joint.shape[0]
 
-ACTION_BOUND = [-20, 20]
+ACTION_BOUND = [-10, 10]
 
 # all placeholder for tf
 with tf.name_scope('S'):
@@ -215,19 +215,20 @@ M = Memory(MEMORY_CAPACITY, dims=2 * STATE_DIM + ACTION_DIM + 1)
 
 ans_r = []
 
-# saver = tf.train.Saver()
-# path = '/save' + MODE[n_model]
+saver = tf.train.Saver()
+path = './' + MODE[n_model]
 
-# if LOAD:
-#     saver.restore(sess, tf.train.latest_checkpoint(path))
-# else:
-sess.run(tf.global_variables_initializer())
+if LOAD:
+    saver.restore(sess, tf.train.latest_checkpoint(path))
+else:
+    sess.run(tf.global_variables_initializer())
 
-a_record = []
+
 def train():
     var = 2.  # control exploration
 
     for ep in range(MAX_EPISODES):
+        a_record = []
         s = env.reset()
         ep_reward = 0
 
@@ -274,17 +275,22 @@ def train():
                       )
 
                 ans_r.append(ep_reward)
-                # p = env.state
-                # plt.plot(p)
-                # plt.show()
                 break
 
-    # if os.path.isdir(path):
-    #     shutil.rmtree(path)
-    # os.mkdir(path)
-    # ckpt_path = os.path.join('./' + MODE[n_model], 'DDPG.ckpt')
-    # save_path = saver.save(sess, ckpt_path, write_meta_graph=False)
-    # print("\nSave Model %s\n" % save_path)
+        if ep == MAX_EPISODES-1:
+            fig1 = plt.subplot(121)
+            p = env.state_record
+            plt.plot(p)
+            fig2 = plt.subplot(122)
+            plt.plot(a_record)
+            plt.show()
+
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+    os.mkdir(path)
+    ckpt_path = os.path.join('./' + MODE[n_model], 'DDPG.ckpt')
+    save_path = saver.save(sess, ckpt_path, write_meta_graph=False)
+    print("\nSave Model %s\n" % save_path)
 
 
 
@@ -300,7 +306,7 @@ def eval():
 
 
 if __name__ == '__main__':
-    if LOAD:
-        eval()
-    else:
-        train()
+    # if LOAD:
+    #     eval()
+    # else:
+    train()

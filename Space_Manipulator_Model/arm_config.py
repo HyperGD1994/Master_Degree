@@ -4,7 +4,7 @@ import math
 
 class ArmConfig(object):
     def __init__(self):
-        self.d_time = 0.01
+        self.d_time = 0.05
         self.gravity = 0
 
         # link number: n
@@ -42,7 +42,7 @@ class ArmConfig(object):
         self.inertia = inertia
 
         # mass : 1x(n+1)
-        self.mass = np.array([100, 10, 10])
+        self.mass = np.array([1000, 10, 10])
 
         # q_from_Bi_to_i : nx3
         Qi = np.zeros((n+1, 3))

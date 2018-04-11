@@ -100,11 +100,15 @@ class ArmEnv(object):
         distance = self.s[0:3] - desired_pos
 
         abs_distance = np.sqrt(np.sum(np.square(distance)))
-        r = -abs_distance
+        r = -abs_distance/10
 
-        if abs_distance < self.best_distance:
-            self.best_distance = abs_distance
-            r += 1
+        if abs_distance > 3:
+            self.get_point = True
+            r = -100
+
+        # if abs_distance < self.best_distance:
+        #     self.best_distance = abs_distance
+        #     r += 1
 
         if abs_distance < self.grab_buffer and (not self.get_point):
             r += 10
@@ -112,13 +116,12 @@ class ArmEnv(object):
             if self.grab_counter > t:
                 r += 100
                 self.get_point = True
+
         elif abs_distance > self.grab_buffer:
             self.grab_counter = 0
             self.get_point = False
 
-        if abs_distance > 3:
-            self.get_point = True
-            r -= 100
+
         return r
 
     def reset(self):

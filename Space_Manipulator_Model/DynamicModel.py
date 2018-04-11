@@ -619,7 +619,9 @@ class DynamicModel:
 if __name__ == '__main__':
     pi = math.pi
 
-    q = np.zeros((2, 1))
+    # q = np.zeros((2, 1))
+
+    q = np.array([[pi/2, pi/2]]).T
     qd = np.zeros((2, 1))
     qdd = np.zeros((2, 1))
 
