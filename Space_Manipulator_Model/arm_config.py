@@ -47,8 +47,8 @@ class ArmConfig(object):
         # q_from_Bi_to_i : nx3
         Qi = np.zeros((n+1, 3))
         pi = math.pi
-        Qi[0] = np.array([-pi / 2, 0, 0])
-        Qi[1] = np.array([pi / 2, 0, 0])
+        Qi[0] = np.array([0, 0, 0])
+        Qi[1] = np.array([0, 0, 0])
         self.q_from_Bi_to_i = Qi
 
         # orientation_of_endpoint : (n+1)xn
@@ -62,10 +62,10 @@ class ArmConfig(object):
         # (from base link 0 to joint j
         # or from link i to end point)
         cc = np.zeros((n+2, n+2, 3))
-        cc[1, 1] = np.array([0, 0, -0.5])
-        cc[2, 2] = np.array([0, 0, -0.5])
+        cc[1, 1] = np.array([0, -0.5, 0])
+        cc[2, 2] = np.array([0, -0.5, 0])
 
-        cc[1, 2] = np.array([0, 0, 0.5])
+        cc[1, 2] = np.array([0, 0.5, 0])
 
         cc[0, 1] = np.array([0, 1, 0])
         cc[2, 3] = np.array([0, 0.5, 0])

@@ -27,17 +27,16 @@ import matplotlib.pyplot as plt
 np.random.seed(1)
 tf.set_random_seed(1)
 
-MAX_EPISODES = 50
-MAX_EP_STEPS = 500
+MAX_EPISODES = 1000
+MAX_EP_STEPS = 200
 LR_A = 1e-5  # learning rate for actor
 LR_C = 1e-5  # learning rate for critic
 GAMMA = 0.9  # reward discount
 REPLACE_ITER_A = 1100
 REPLACE_ITER_C = 1000
 MEMORY_CAPACITY = 5000
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 VAR_MIN = 0.1
-RENDER = True
 LOAD = True
 MODE = ['easy', 'hard']
 n_model = 1
@@ -50,7 +49,7 @@ env = ArmEnv()
 STATE_DIM = env.s.shape[0]
 ACTION_DIM = env.joint.shape[0]
 
-ACTION_BOUND = [-10, 10]
+ACTION_BOUND = [-1, 1]
 
 # all placeholder for tf
 with tf.name_scope('S'):
@@ -226,11 +225,12 @@ else:
 
 def train():
     var = 2.  # control exploration
-
+    grab_buffer = 0.5
     for ep in range(MAX_EPISODES):
         a_record = []
         s = env.reset()
         ep_reward = 0
+
 
         for t in range(MAX_EP_STEPS):
             # while True:
@@ -241,7 +241,7 @@ def train():
             a = actor.choose_action(s)
             a = np.clip(np.random.normal(a, var), *ACTION_BOUND)  # add randomness to action selection for exploration
             a_record.append(a[0])
-            s_, r, done = env.step(a)
+            s_, r, done = env.step(a, grab_buffer)
             M.store_transition(s, a, r, s_)
 
             if M.pointer > MEMORY_CAPACITY:
@@ -271,8 +271,11 @@ def train():
                       '| base %.2f' % s[3],
                       '  %.2f' % s[4],
                       '  %.2f' % s[5],
-                      '%.i'% t
+                      '%.i'% t,
+                      '%.2f'% grab_buffer
                       )
+                if done:
+                    grab_buffer *= 0.999
 
                 ans_r.append(ep_reward)
                 break

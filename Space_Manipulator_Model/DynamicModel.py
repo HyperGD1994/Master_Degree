@@ -621,7 +621,7 @@ if __name__ == '__main__':
 
     # q = np.zeros((2, 1))
 
-    q = np.array([[pi/2, pi/2]]).T
+    q = np.array([[pi/2, 0]]).T
     qd = np.zeros((2, 1))
     qdd = np.zeros((2, 1))
 

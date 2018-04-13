@@ -45,14 +45,32 @@ class ArmEnv(object):
 
         self.d_time = config.d_time
 
-        self.grab_buffer = 0.1
+        # self.grab_buffer = 0.3
         self.get_point = False
         self.grab_counter = 0
 
         self.target_pos = np.array([0.5, 2, 0])
         self.best_distance = np.sqrt(np.sum(np.square(self.s[0:3] - self.target_pos)))
 
-    def step(self, action):
+    def step(self, action, grab_buffer):
+
+        # n = self.link_num
+        # q, qd, qdd, R0, A0, v0, w0, vd0, wd0 = self.get_state()
+        #
+        # q += action.reshape(2,1) * model.d_time
+        # q %= 2 * pi
+        #
+        # AA = model.calc_coordinate_transform(A0, q)
+        # RR = model.calc_position(R0, AA, q)
+        #
+        # end_effector_pos = RR[-1]
+        # base_pos = RR[0]
+        #
+        # self.state_record.append(RR[-1])
+        # self.s = np.hstack((end_effector_pos, base_pos))
+        # r = self.reward(grab_buffer)
+        #
+        # return self.s, r, self.get_point
 
         n = self.link_num
         q, qd, qdd, R0, A0, v0, w0, vd0, wd0 = self.get_state()
@@ -68,7 +86,7 @@ class ArmEnv(object):
         vd0, wd0, qdd = model.foward_dynamics( R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
         R0, A0, v0, w0, q, qd = model.forward_dynamics_RungeKutta( R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
 
-        q = q % (2 * pi)
+        q %= (2 * pi)
 
         self.joint[:, 0] = q.reshape(n)
         self.joint[:, 1] = qd.reshape(n)
@@ -85,13 +103,17 @@ class ArmEnv(object):
         RR = model.calc_position(R0, AA, q)
         end_effector_pos = RR[-1]
         base_pos = RR[0]
+
+        vel, _ = model.calc_velocity(AA, v0, w0, q, qd)
+        end_v = vel[-1].reshape(3)
         self.state_record.append(RR[-1])
-        self.s = np.hstack((end_effector_pos, base_pos))
-        r = self.reward()
+        self.s = np.hstack((end_effector_pos, base_pos, end_v))
+        r = self.reward(grab_buffer)
 
         return self.s, r, self.get_point
 
-    def reward(self):
+
+    def reward(self, grab_buffer):
         t = 50
 
         # desired_pos = np.array([0, 3, 0.5, 0, 0, 0])
@@ -100,24 +122,27 @@ class ArmEnv(object):
         distance = self.s[0:3] - desired_pos
 
         abs_distance = np.sqrt(np.sum(np.square(distance)))
+
+        # r = -math.log(abs_distance)
         r = -abs_distance/10
 
-        if abs_distance > 3:
-            self.get_point = True
-            r = -100
+        # if abs_distance > 3:
+        #     self.get_point = True
+        #     r = -100
+        #     return r
 
         # if abs_distance < self.best_distance:
         #     self.best_distance = abs_distance
         #     r += 1
 
-        if abs_distance < self.grab_buffer and (not self.get_point):
+        if abs_distance <grab_buffer and (not self.get_point):
             r += 10
             self.grab_counter += 1
             if self.grab_counter > t:
                 r += 100
                 self.get_point = True
 
-        elif abs_distance > self.grab_buffer:
+        elif abs_distance > grab_buffer:
             self.grab_counter = 0
             self.get_point = False
 
@@ -170,7 +195,7 @@ if __name__ == '__main__':
         q_ans.append(np.array(q.reshape(2)))
         print(time)
 
-        arm_env.step(a)
+        arm_env.step(a,grab_buffer=0.5)
 
     arm_env.reset()
 
