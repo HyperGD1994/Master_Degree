@@ -1,22 +1,3 @@
-"""
-Environment is a Robot Arm. The arm tries to get to the blue point.
-The environment will return a geographic (distance) information for the arm to learn.
-
-The far away from blue point the less reward; touch blue r+=1; stop at blue for a while then get r=+10.
-
-You can train this RL by using LOAD = False, after training, this model will be store in the a local folder.
-Using LOAD = True to reload the trained model for playing.
-
-You can customize this script in a way you want.
-
-View more on [莫烦Python] : https://morvanzhou.github.io/tutorials/
-
-Requirement:
-pyglet >= 1.2.4
-numpy >= 1.12.1
-tensorflow >= 1.0.1
-"""
-
 import tensorflow as tf
 import numpy as np
 import os
@@ -42,13 +23,9 @@ MODE = ['easy', 'hard']
 n_model = 1
 
 env = ArmEnv()
-# STATE_DIM = env.state_dim
-# ACTION_DIM = env.action_dim
-# ACTION_BOUND = env.action_bound
 
 STATE_DIM = env.s.shape[0]
 ACTION_DIM = env.joint.shape[0]
-
 ACTION_BOUND = [-5, 5]
 
 # all placeholder for tf
@@ -202,7 +179,6 @@ class Memory(object):
         indices = np.random.choice(self.capacity, size=n)
         return self.data[indices, :]
 
-
 sess = tf.Session()
 
 # Create actor and critic.
@@ -212,16 +188,7 @@ actor.add_grad_to_graph(critic.a_grads)
 
 M = Memory(MEMORY_CAPACITY, dims=2 * STATE_DIM + ACTION_DIM + 1)
 
-ans_r = []
-
-saver = tf.train.Saver()
-path = './' + MODE[n_model]
-
-if LOAD:
-    saver.restore(sess, tf.train.latest_checkpoint(path))
-else:
-    sess.run(tf.global_variables_initializer())
-
+sess.run(tf.global_variables_initializer())
 
 def train():
     var = 2.  # control exploration
@@ -231,11 +198,7 @@ def train():
         s = env.reset()
         ep_reward = 0
 
-
         for t in range(MAX_EP_STEPS):
-            # while True:
-            # if RENDER:
-            #     env.render()
 
             # Added exploration noise
             a = actor.choose_action(s)
@@ -280,8 +243,6 @@ def train():
                       )
                 if done:
                     grab_buffer *= 0.999
-
-                ans_r.append(ep_reward)
                 break
 
         if ep == MAX_EPISODES-1:
@@ -291,15 +252,6 @@ def train():
             fig2 = plt.subplot(122)
             plt.plot(a_record)
             plt.show()
-
-    if os.path.isdir(path):
-        shutil.rmtree(path)
-    os.mkdir(path)
-    ckpt_path = os.path.join('./' + MODE[n_model], 'DDPG.ckpt')
-    save_path = saver.save(sess, ckpt_path, write_meta_graph=False)
-    print("\nSave Model %s\n" % save_path)
-
-
 
 def eval():
     # env.set_fps(30)
@@ -313,7 +265,4 @@ def eval():
 
 
 if __name__ == '__main__':
-    # if LOAD:
-    #     eval()
-    # else:
     train()

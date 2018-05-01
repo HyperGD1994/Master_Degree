@@ -24,19 +24,18 @@ class ArmEnv(object):
 
         v0 = np.array([[0, 0, 0]]).T
         w0 = np.array([[0, 0, 0]]).T
-        vd0 = np.array([[0, 0, 0]]).T
-        wd0 = np.array([[0, 0, 0]]).T
+        # vd0 = np.array([[0, 0, 0]]).T
+        # wd0 = np.array([[0, 0, 0]]).T
 
         R0 = np.array([[0, 0, 0]]).T
         Q0 = np.array([[0, 0, 0]]).T
         A0 = np.eye(3)
 
-        self.base = np.hstack((R0, A0, v0, w0, vd0, wd0))
+        self.base = np.hstack((R0, A0, v0, w0))
 
         AA = model.calc_coordinate_transform(A0, q)
         RR = model.calc_position(R0, AA, q)
-        self.state_record = []
-        self.state_record.append(RR[-1])
+
 
         end_effector_pos = RR[-1]
         base_pos = RR[0]
@@ -49,9 +48,11 @@ class ArmEnv(object):
         self.get_point = False
         self.grab_counter = 0
 
-        self.target_pos = np.array([0.5, 2, 0])
+        self.target_pos = np.hstack((np.random.rand(2),[0]))
         self.best_distance = np.sqrt(np.sum(np.square(self.s[0:3] - self.target_pos)))
 
+        self.state_record = []
+        self.state_record.append(RR[-1] -self.target_pos)
     def step(self, action, grab_buffer):
 
         # n = self.link_num
@@ -66,14 +67,14 @@ class ArmEnv(object):
         # end_effector_pos = RR[-1]
         # base_pos = RR[0]
         #
-        # self.state_record.append(RR[-1])
+        # self.state_record.append(RR[-1]-self.target_pos)
         # self.s = np.hstack((end_effector_pos, base_pos))
         # r = self.reward(grab_buffer)
         #
         # return self.s, r, self.get_point
 
         n = self.link_num
-        q, qd, qdd, R0, A0, v0, w0, vd0, wd0 = self.get_state()
+        q, qd, qdd, R0, A0, v0, w0= self.get_state()
 
         tau = action
 
@@ -83,10 +84,10 @@ class ArmEnv(object):
         F0 = np.array([[0, 0, 0]]).T
         T0 = np.array([[0, 0, 0]]).T
 
-        vd0, wd0, qdd = model.foward_dynamics( R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
-        R0, A0, v0, w0, q, qd = model.forward_dynamics_RungeKutta( R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
+        # vd0, wd0, qdd = model.foward_dynamics(R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
+        R0, A0, v0, w0, q, qd = model.forward_dynamics_RungeKutta(R0, A0, v0, w0, q, qd, F0, T0, Fe, Te, tau)
 
-        q %= (2 * pi)
+        # q %= (2 * pi)
 
         self.joint[:, 0] = q.reshape(n)
         self.joint[:, 1] = qd.reshape(n)
@@ -96,8 +97,8 @@ class ArmEnv(object):
         self.base[:, 1:4] = A0
         self.base[:, 4] = v0.reshape(3)
         self.base[:, 5] = w0.reshape(3)
-        self.base[:, 6] = vd0.reshape(3)
-        self.base[:, 7] = wd0.reshape(3)
+        # self.base[:, 6] = vd0.reshape(3)
+        # self.base[:, 7] = wd0.reshape(3)
 
         AA = model.calc_coordinate_transform(A0, q)
         RR = model.calc_position(R0, AA, q)
@@ -106,8 +107,8 @@ class ArmEnv(object):
 
         vel, _ = model.calc_velocity(AA, v0, w0, q, qd)
         end_v = vel[-1].reshape(3)
-        self.state_record.append(RR[-1])
-        self.s = np.hstack((end_effector_pos, base_pos, end_v))
+        self.state_record.append(RR[-1]-self.target_pos)
+        self.s = np.hstack((end_effector_pos, base_pos))
         r = self.reward(grab_buffer)
 
         return self.s, r, self.get_point
@@ -124,7 +125,7 @@ class ArmEnv(object):
         abs_distance = np.sqrt(np.sum(np.square(distance)))
 
         # r = -math.log(abs_distance)
-        r = -abs_distance/10
+        r = -abs_distance
 
         # if abs_distance > 3:
         #     self.get_point = True
@@ -165,9 +166,9 @@ class ArmEnv(object):
         A0 = self.base[:, 1:4]
         v0 = self.base[:, 4].reshape(3, 1)
         w0 = self.base[:, 5].reshape(3, 1)
-        vd0 = self.base[:, 6].reshape(3, 1)
-        wd0 = self.base[:, 7].reshape(3, 1)
-        return q, qd, qdd, R0, A0, v0, w0, vd0, wd0
+        # vd0 = self.base[:, 6].reshape(3, 1)
+        # wd0 = self.base[:, 7].reshape(3, 1)
+        return q, qd, qdd, R0, A0, v0, w0
 
 
 if __name__ == '__main__':
